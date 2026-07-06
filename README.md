@@ -1,5 +1,9 @@
 # Argis 👁️
 
+<p align="center">
+  <img src="assets/logo.jpeg" alt="Argis logo" width="220"/>
+</p>
+
 **The all-seeing username scanner.**
 
 Argis hunts down a username across dozens of platforms concurrently, tells

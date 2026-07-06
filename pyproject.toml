@@ -17,6 +17,11 @@ dependencies = [
     "rich>=13.7.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Mohilisop/argis"
+Repository = "https://github.com/Mohilisop/argis"
+Issues = "https://github.com/Mohilisop/argis/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
