@@ -26,14 +26,18 @@ platform, watched at once.
 ## Install
 
 ```bash
-# From source, editable (for development):
-pip install -e .
-
-# Or with pipx (recommended once published):
-pipx install argis
+pip install argis
 ```
 
 Requires Python 3.10+.
+
+For development (editable install from source):
+
+```bash
+git clone https://github.com/Mohilisop/argis.git
+cd argis
+pip install -e .
+```
 
 ## Usage
 
