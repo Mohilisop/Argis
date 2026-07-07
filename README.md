@@ -1,9 +1,5 @@
 # Argis 👁️
 
-<p align="center">
-  <img src="assets/logo.jpeg" alt="Argis logo" width="220"/>
-</p>
-
 **The all-seeing username scanner.**
 
 Argis hunts down a username across dozens of platforms concurrently, tells
@@ -15,7 +11,7 @@ platform, watched at once.
 
 ## Features
 
-- **Async everything.** Built on `httpx` + `asyncio`; scans 80+ sites in
+- **Async everything.** Built on `httpx` + `asyncio`; scans 60+ sites in
   parallel instead of one at a time.
 - **Diff engine.** `--diff` compares the current scan against your last
   saved run and shows exactly what got registered or deleted.
@@ -30,18 +26,14 @@ platform, watched at once.
 ## Install
 
 ```bash
-pip install argis
+# From source, editable (for development):
+pip install -e .
+
+# Or with pipx (recommended once published):
+pipx install argis
 ```
 
 Requires Python 3.10+.
-
-For development (editable install from source):
-
-```bash
-git clone https://github.com/Mohilisop/argis.git
-cd argis
-pip install -e .
-```
 
 ## Usage
 
