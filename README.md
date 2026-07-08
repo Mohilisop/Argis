@@ -1,5 +1,9 @@
 # Argis 👁️
 
+<p align="center">
+  <img src="assets/logo.jpeg" alt="Argis logo" width="220"/>
+</p>
+
 **The all-seeing username scanner.**
 
 Argis hunts down a username across dozens of platforms concurrently, tells
@@ -22,18 +26,29 @@ platform, watched at once.
   `rich`.
 - **Exportable.** `--export csv|json|markdown` for piping into other tools.
 - **Proxy / Tor support.** Route scans through a proxy or local Tor.
+- **Attack-surface recon.** `argis recon` maps open ports on a host,
+  fingerprints web services (status, `Server` header, page title), and
+  reads unprompted service banners (SSH/FTP/SMTP/etc.) — information
+  gathering only, no exploitation.
+- **Host discovery.** `argis discover <cidr>` sweeps a subnet (capped at
+  256 hosts) to find which hosts respond, via TCP probes rather than
+  raw ICMP.
 
 ## Install
 
 ```bash
-# From source, editable (for development):
-pip install -e .
-
-# Or with pipx (recommended once published):
-pipx install argis
+pip install argis
 ```
 
 Requires Python 3.10+.
+
+For development (editable install from source):
+
+```bash
+git clone https://github.com/Mohilisop/argis.git
+cd argis
+pip install -e .
+```
 
 ## Usage
 
@@ -58,6 +73,24 @@ argis history john_doe
 
 # Wipe saved history
 argis clear-history john_doe
+
+# Recon a host: scan common ports + fingerprint web services
+argis recon example.com
+
+# Recon with a custom port list, no web fingerprinting
+argis recon 10.0.0.5 --ports 22,80,443,3306 --no-web
+
+# Export recon results
+argis recon example.com --export json -o example_recon.json
+
+# Recon without service banners
+argis recon example.com --no-banners
+
+# Discover live hosts on a local subnet (max 256 hosts)
+argis discover 192.168.1.0/24
+
+# Discover with custom probe ports
+argis discover 10.0.0.0/28 --ports 22,80,443,3389
 ```
 
 ## How detection works
@@ -89,6 +122,7 @@ argis/
 │   ├── cli.py          # typer commands
 │   ├── core.py          # async scanning engine
 │   ├── diff.py           # history storage + diff computation
+│   ├── recon.py          # async port scan + web fingerprinting
 │   ├── exceptions.py
 │   ├── sites.json        # target platforms + detection rules
 │   └── utils/
@@ -100,5 +134,9 @@ argis/
 
 ## Disclaimer
 
-Use responsibly. Only look up usernames you have a legitimate reason to
-investigate, and respect the terms of service of the sites you query.
+Use responsibly. Only look up usernames or scan hosts you have a
+legitimate reason to investigate — for `recon`, that means explicit
+authorization to scan the target. Respect the terms of service of the
+sites you query. Argis performs reconnaissance only: it reports what it
+finds (open ports, HTTP responses) and does not attempt to identify or
+exploit vulnerabilities.

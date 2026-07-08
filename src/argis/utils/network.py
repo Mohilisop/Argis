@@ -1,13 +1,11 @@
-"""HTTP client construction, user-agent rotation, and proxy/Tor routing."""
-
 from __future__ import annotations
 
 import random
+import socket
+from dataclasses import dataclass, field
 
 import httpx
 
-# A small rotation pool. Real browser UAs reduce the odds of a WAF (e.g.
-# Cloudflare) flagging the scan as bot traffic.
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -26,7 +24,6 @@ TOR_PROXY_URL = "socks5://127.0.0.1:9050"
 
 
 def random_user_agent() -> str:
-    """Return a random desktop/mobile User-Agent string."""
     return random.choice(USER_AGENTS)
 
 
@@ -37,16 +34,6 @@ def build_client(
     timeout: float = 7.0,
     http2: bool = False,
 ) -> httpx.AsyncClient:
-    """Construct a configured httpx.AsyncClient.
-
-    Args:
-        proxy: Explicit proxy URL (e.g. "socks5://127.0.0.1:9050" or
-            "http://user:pass@host:port"). Takes precedence over use_tor.
-        use_tor: If True and no explicit proxy given, route through a local
-            Tor SOCKS5 proxy (assumes Tor is running on the default port).
-        timeout: Per-request timeout in seconds.
-        http2: Enable HTTP/2 multiplexing support.
-    """
     proxy_url = proxy or (TOR_PROXY_URL if use_tor else None)
 
     kwargs: dict = {
@@ -58,3 +45,112 @@ def build_client(
         kwargs["proxy"] = proxy_url
 
     return httpx.AsyncClient(**kwargs)
+
+
+@dataclass
+class DNSRecord:
+    type: str
+    value: str
+    ttl: int | None = None
+
+
+@dataclass
+class DNSResult:
+    hostname: str
+    records: list[DNSRecord] = field(default_factory=list)
+    error: str | None = None
+
+
+_DEFAULT_WHOIS_SERVERS: dict[str, str] = {
+    "com": "whois.verisign-grs.com",
+    "net": "whois.verisign-grs.com",
+    "org": "whois.pir.org",
+    "io": "whois.nic.io",
+    "co": "whois.nic.co",
+    "me": "whois.nic.me",
+    "dev": "whois.nic.dev",
+    "app": "whois.nic.app",
+    "cloud": "whois.nic.cloud",
+}
+
+
+def resolve_dns(hostname: str) -> DNSResult:
+    records: list[DNSRecord] = []
+    try:
+        info = socket.getaddrinfo(hostname, 80, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        seen = set()
+        for res in info:
+            ip = res[4][0]
+            if ip not in seen:
+                seen.add(ip)
+                family = "IPv4" if res[0] == socket.AF_INET else "IPv6"
+                records.append(DNSRecord(type=family, value=ip))
+        return DNSResult(hostname=hostname, records=records)
+    except socket.gaierror as exc:
+        return DNSResult(hostname=hostname, error=str(exc))
+
+
+def resolve_dns_full(
+    hostname: str,
+    timeout: float = 3.0,
+) -> DNSResult:
+    result = resolve_dns(hostname)
+    if result.error:
+        return result
+
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(timeout)
+
+    try:
+        try:
+            canon = socket.getnameinfo((result.records[0].value, 0), socket.NI_NAMEREQD)
+            result.records.append(
+                DNSRecord(type="PTR", value=canon[0])
+            )
+        except (OSError, socket.gaierror):
+            pass
+
+        try:
+            host = socket.gethostbyname_ex(hostname)
+            if host[0] and host[0] != hostname:
+                result.records.append(DNSRecord(type="CNAME", value=host[0]))
+        except socket.gaierror:
+            pass
+    finally:
+        socket.setdefaulttimeout(old_timeout)
+
+    return result
+
+
+def whois_lookup(domain: str, timeout: float = 10.0) -> str:
+    def _get_tld(domain: str) -> str:
+        parts = domain.rsplit(".", 2)
+        if len(parts) >= 2 and len(parts[-1]) <= 3:
+            return parts[-1]
+        return parts[-1] if len(parts) >= 2 else "com"
+
+    tld = _get_tld(domain)
+    server = _DEFAULT_WHOIS_SERVERS.get(tld, "whois.verisign-grs.com")
+
+    try:
+        sock = socket.create_connection((server, 43), timeout=timeout)
+        sock.sendall(f"{domain}\r\n".encode("utf-8"))
+        response = b""
+        while True:
+            try:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+            except socket.timeout:
+                break
+        sock.close()
+        text = response.decode("utf-8", errors="replace")
+        lines = []
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped and not stripped.startswith("%") and not stripped.startswith(">>>"):
+                lines.append(stripped)
+        return "\n".join(lines[:60])
+    except (socket.timeout, OSError) as exc:
+        return f"Error: {exc}"
