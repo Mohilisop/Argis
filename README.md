@@ -32,7 +32,7 @@ Named after **Argus Panoptes**, the hundred-eyed giant of Greek myth — every p
 - **HTTP/2 support** — `--http2` for multiplexed connections
 - **Diff tracking** — `--diff` compares against the last scan to show changes
 
-### Reconnaissance (nmap-style)
+### Reconnaissance 
 | Flag | Purpose |
 |------|---------|
 | `-pt 22,80,443` | Port scan specific ports |
