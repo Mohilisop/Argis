@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from rich.console import Console
 from rich.text import Text
 from rich.panel import Panel
@@ -11,6 +13,7 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
+from rich.live import Live
 from rich.rule import Rule
 from rich.table import Table
 from rich.style import Style
@@ -19,18 +22,113 @@ from rich.align import Align
 
 console = Console()
 
-LOGO_TITLE = "[bold cyan]A R G I S[/bold cyan]"
 LOGO_SUB = "[cyan]the all-seeing OSINT scanner[/cyan]"
+
+# Blocky ASCII wordmark for "ARGIS", one string per row.
+_ARGIS_ART = [
+    " █    ██    ██   ███   ██ ",
+    "█ █   █ █   █     █   █   ",
+    "███   ██    █ █   █    █  ",
+    "█ █   █ █   █ █   █     █ ",
+    "█ █   █ █    ██   ███  ██ ",
+]
+
+# Gradient endpoints (cyan -> blue), matching the eye logo's palette.
+_GRAD_START = (110, 231, 255)
+_GRAD_END = (58, 120, 235)
+
+
+def _lerp_rgb(t: float) -> tuple[int, int, int]:
+    r = round(_GRAD_START[0] + (_GRAD_END[0] - _GRAD_START[0]) * t)
+    g = round(_GRAD_START[1] + (_GRAD_END[1] - _GRAD_START[1]) * t)
+    b = round(_GRAD_START[2] + (_GRAD_END[2] - _GRAD_START[2]) * t)
+    return r, g, b
+
+
+def _lerp_color(t: float) -> str:
+    r, g, b = _lerp_rgb(t)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _gradient_line(line: str, revealed: int | None = None, shimmer_center: float | None = None) -> Text:
+    """Render one row of the wordmark with a cyan->blue gradient.
+
+    ``revealed`` limits how many characters (left to right) are drawn, letting
+    callers build a typewriter-style reveal. ``shimmer_center`` brightens
+    characters near that column index, used for the sweeping highlight pass.
+    """
+    text = Text()
+    width = max(len(line) - 1, 1)
+    limit = len(line) if revealed is None else max(0, min(revealed, len(line)))
+    for i, ch in enumerate(line):
+        if i >= limit or ch == " ":
+            text.append(" ")
+            continue
+        r, g, b = _lerp_rgb(i / width)
+        if shimmer_center is not None:
+            dist = abs(i - shimmer_center)
+            if dist < 2.2:
+                boost = max(0.0, 1 - dist / 2.2) * 0.85
+                r = round(r + (255 - r) * boost)
+                g = round(g + (255 - g) * boost)
+                b = round(b + (255 - b) * boost)
+        text.append(ch, style=Style(color=f"#{r:02x}{g:02x}{b:02x}", bold=True))
+    return text
+
+
+def _logo_panel(revealed: list[int] | None = None, shimmer_center: float | None = None) -> Panel:
+    art = Text()
+    for i, row in enumerate(_ARGIS_ART):
+        row_revealed = None if revealed is None else revealed[i]
+        art.append_text(_gradient_line(row, row_revealed, shimmer_center))
+        if i != len(_ARGIS_ART) - 1:
+            art.append("\n")
+
+    body = Align.center(art)
+    return Panel(
+        body,
+        subtitle=LOGO_SUB,
+        subtitle_align="center",
+        border_style="cyan",
+        padding=(1, 2),
+    )
 
 
 def _print_logo() -> None:
-    console.print(
-        Panel(
-            f"{LOGO_TITLE}\n{LOGO_SUB}",
-            border_style="cyan",
-            padding=(1, 4),
-        )
-    )
+    console.print(_logo_panel())
+
+
+def _animate_logo() -> None:
+    """Play a short reveal + shimmer intro before settling on the static logo."""
+    lengths = [len(row) for row in _ARGIS_ART]
+    total_width = max(lengths)
+    revealed = [0] * len(_ARGIS_ART)
+    step = 3
+
+    with Live(console=console, auto_refresh=False, transient=True) as live:
+        for row_idx, length in enumerate(lengths):
+            for chars in range(0, length + step, step):
+                revealed[row_idx] = min(chars, length)
+                live.update(_logo_panel(revealed), refresh=True)
+                time.sleep(0.012)
+            revealed[row_idx] = length
+
+        for pos in range(-2, total_width + 3):
+            live.update(_logo_panel(lengths, float(pos)), refresh=True)
+            time.sleep(0.02)
+
+    # Leave the final, non-transient frame in the scrollback.
+    _print_logo()
+
+
+def _show_logo(animate: bool = True) -> None:
+    if animate and console.is_terminal:
+        try:
+            _animate_logo()
+            return
+        except Exception:
+            pass
+    _print_logo()
 
 
 STATUS_BADGES = {
@@ -67,8 +165,8 @@ def make_progress() -> Progress:
     )
 
 
-def print_banner(username: str) -> None:
-    _print_logo()
+def print_banner(username: str, animate: bool = True) -> None:
+    _show_logo(animate)
     console.print()
     console.print(Panel.fit(
         f"[bold white]Argis Engine[/bold white] initializing\n"
@@ -515,8 +613,8 @@ def print_traceroute_results(hops: list) -> None:
     console.print(f"[dim]{reachable} hops / {len(hops)} total[/dim]")
 
 
-def print_monitor_header(username: str, interval: int) -> None:
-    _print_logo()
+def print_monitor_header(username: str, interval: int, animate: bool = True) -> None:
+    _show_logo(animate)
     console.print()
     console.print(Panel.fit(
         f"Monitoring [bold cyan]@{username}[/bold cyan]\n"

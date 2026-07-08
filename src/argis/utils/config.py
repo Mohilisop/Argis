@@ -14,6 +14,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "retry": True,
     "export": None,
     "quiet": False,
+    "animate": True,
     "notify": False,
     "geoip_key": None,
     "recon": {

@@ -167,6 +167,10 @@ def scan(
     quiet: bool = typer.Option(
         False, "--quiet", "-q", help="Suppress the progress bar and live [+] hits."
     ),
+    animate: bool = typer.Option(
+        True, "--animate/--no-animate",
+        help="Play the animated startup logo (auto-skipped on non-interactive terminals).",
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Show per-platform error details for failed checks."
     ),
@@ -242,6 +246,7 @@ def scan(
             "retry": retry,
             "export": export,
             "quiet": quiet,
+            "animate": animate,
             "notify": notify,
             "geoip_key": geo_key,
         })
@@ -257,6 +262,7 @@ def scan(
         retry = cfg.get("retry", True) if retry else False
         export = export or cfg.get("export")
         quiet = quiet or cfg.get("quiet", False)
+        animate = animate and cfg.get("animate", True)
 
     categories = tuple(c.strip().lower() for c in category.split(",")) if category else None
     exclude_set = set(e.strip().lower() for e in exclude.split(",")) if exclude else None
@@ -283,7 +289,7 @@ def scan(
         return
 
     if not quiet:
-        display.print_banner(username)
+        display.print_banner(username, animate=animate)
 
     engine = ArgisEngine(
         username,
@@ -1167,9 +1173,12 @@ def monitor(
         True, "--diff/--no-diff", help="Show diff against the previous cycle."
     ),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress per-cycle output."),
+    animate: bool = typer.Option(
+        True, "--animate/--no-animate", help="Play the animated startup logo."
+    ),
 ):
     """Continuously watch a username and report changes over time."""
-    display.print_monitor_header(username, interval)
+    display.print_monitor_header(username, interval, animate=animate)
     previous_results = None
 
     try:
