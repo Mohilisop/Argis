@@ -1,7 +1,7 @@
 # Argis
 
 <p align="center">
-  <img src="assets/logo.png" alt="Argis logo" width="320"/>
+  <img src="assets/logo.jpeg" alt="Argis logo" width="320"/>
 </p>
 
 <p align="center">
