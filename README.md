@@ -11,7 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+"/>
-  <img src="https://img.shields.io/github/actions/workflow/status/Mohilisop/argis/.github/workflows/ci.yml?branch=main" alt="CI"/>
+  <img src="https://img.shields.io/github/actions/workflow/status/Mohilisop/Argis/.github/workflows/ci.yml?branch=main" alt="CI"/>
   <img src="https://img.shields.io/github/license/Mohilisop/argis" alt="License"/>
 </p>
 
