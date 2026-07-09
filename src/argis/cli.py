@@ -1393,7 +1393,16 @@ def domain(
     ),
 ):
     """DNS resolution, WHOIS, and optional port scan for a domain."""
+    from urllib.parse import urlparse
     from argis.recon import dns_enum, run_whois, port_scan
+
+    parsed = urlparse(domain_name)
+    if parsed.scheme and parsed.netloc:
+        domain_name = parsed.netloc
+    elif parsed.scheme and not parsed.netloc and "/" in domain_name:
+        domain_name = domain_name.split("/")[0]
+    domain_name = domain_name.split("@")[-1]
+    domain_name = domain_name.strip("/").strip()
 
     display.print_recon_banner(domain_name)
 
