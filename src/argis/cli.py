@@ -60,11 +60,16 @@ def main(
 
         from rich.table import Table
 
-        groups = {
+groups = {
             "Username Scanning": [
                 ("scan <username>", "Search a username across 133 platforms"),
                 ("scan-image <img>", "Extract usernames/URLs from a screenshot via OCR"),
                 ("scan-face <img>", "Detect faces and reverse-search them for profiles"),
+            ],
+            "Intelligence": [
+                ("doctor", "Health-check every site rule and flag rot"),
+                ("link <username>", "Cluster accounts into real identities vs impersonators"),
+                ("guard <username>", "Hunt lookalike handles impersonating you"),
             ],
             "Reconnaissance": [
                 ("recon <host>", "Port scan, OS detection, traceroute, DNS, WHOIS, geo"),
@@ -77,15 +82,14 @@ def main(
                 ("clear-history <user>", "Delete scan history"),
                 ("monitor <user>", "Continuously watch a username for changes"),
             ],
-"Analysis": [
+            "Analysis": [
                 ("compare <u1> <u2>", "Compare two usernames side-by-side"),
-                ("guard <username>", "Hunt lookalike handles impersonating you"),
-                ("link <username>", "Cluster accounts into real identities vs impersonators"),
                 ("wayback <username>", "Check Wayback Machine history for a username"),
             ],
             "Utilities": [
                 ("categories", "List all available platform categories"),
-                ("doctor", "Health-check every site rule and flag rot"),
+                ("search", "Search across all scan history"),
+                ("stats", "Aggregate statistics on scan results"),
                 ("setup-celebrity-db", "Download celebrity face data for offline DeepFace matching"),
             ],
         }
