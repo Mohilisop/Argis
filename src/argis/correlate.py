@@ -71,6 +71,7 @@ class Signals:
     display_name: str = ""
     bio: str = ""
     avatar_hash: int | None = None
+    avatar_url: str = ""
     links: set[str] = field(default_factory=set)
     emails: set[str] = field(default_factory=set)
     error: str | None = None
@@ -159,7 +160,8 @@ async def _fetch_signals(
     if fetch_avatar and _HAS_PIL:
         im = _OG_IMAGE.search(html)
         if im:
-            data = await fetcher.get_bytes(im.group(1))
+            sig.avatar_url = im.group(1)
+            data = await fetcher.get_bytes(sig.avatar_url)
             if data:
                 sig.avatar_hash = _dhash(data)
     return sig

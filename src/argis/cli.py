@@ -241,6 +241,10 @@ def scan(
     site: Optional[str] = typer.Option(
         None, "--site", help="Only check specific platform(s). Comma-separated, e.g. 'GitHub,X (Twitter)'."
     ),
+    dossier: Optional[Path] = typer.Option(
+        None, "--dossier",
+        help="Build a full HTML dossier (found accounts + extracted identity) at this path."
+    ),
 ):
     """Search for a target username across all configured platforms.
 
@@ -373,6 +377,22 @@ def scan(
         diffmod.save_scan(username, results)
 
     _handle_scan_export(results, username, export, output)
+
+    if dossier:
+        from argis.dossier import build_dossier, print_dossier, to_html_report, build_dossier_graph
+        cats = {name: rules.get("category", "uncategorized")
+                for name, rules in engine.sites.items()}
+        dsr = asyncio.run(build_dossier(
+            username, results, site_categories=cats,
+            timeout=timeout or 7.0, concurrency=concurrency or 30,
+            proxy=proxy, use_tor=tor))
+        graph_payload = asyncio.run(build_dossier_graph(
+            username, timeout=timeout or 7.0, concurrency=concurrency or 30,
+            proxy=proxy, use_tor=tor))
+        print_dossier(dsr, console)
+        dossier.write_text(to_html_report(dsr, graph_payload=graph_payload),
+                           encoding="utf-8")
+        console.print(f"[green]Full dossier written \u2192 {dossier}[/green]")
 
     screenshot_data: dict[str, bytes] = {}
     if screenshots:
