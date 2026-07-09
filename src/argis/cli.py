@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import webbrowser
 from pathlib import Path
 from typing import Any, Optional
 
@@ -62,6 +63,8 @@ def main(
         groups = {
             "Username Scanning": [
                 ("scan <username>", "Search a username across 133 platforms"),
+                ("scan-image <img>", "Extract usernames/URLs from a screenshot via OCR"),
+                ("scan-face <img>", "Detect faces and reverse-search them for profiles"),
             ],
             "Reconnaissance": [
                 ("recon <host>", "Port scan, OS detection, traceroute, DNS, WHOIS, geo"),
@@ -82,6 +85,7 @@ def main(
             ],
             "Utilities": [
                 ("categories", "List all available platform categories"),
+                ("setup-celebrity-db", "Download celebrity face data for offline DeepFace matching"),
             ],
         }
 
@@ -219,6 +223,15 @@ def scan(
     geo_key: Optional[str] = typer.Option(
         None, "--geo-key", help="ipgeolocation.io API key (or set ARGIS_GEOIP_KEY env var)."
     ),
+    screenshots: bool = typer.Option(
+        False, "--screenshots", help="Capture screenshots of found profile pages via Playwright."
+    ),
+    show_screenshots: bool = typer.Option(
+        False, "--show", help="Show screenshots as ANSI art in the terminal."
+    ),
+    site: Optional[str] = typer.Option(
+        None, "--site", help="Only check specific platform(s). Comma-separated, e.g. 'GitHub,X (Twitter)'."
+    ),
 ):
     """Search for a target username across all configured platforms.
 
@@ -266,6 +279,7 @@ def scan(
 
     categories = tuple(c.strip().lower() for c in category.split(",")) if category else None
     exclude_set = set(e.strip().lower() for e in exclude.split(",")) if exclude else None
+    include_set = set(s.strip() for s in site.split(",")) if site else None
 
     if file:
         _run_batch_scan(
@@ -285,6 +299,8 @@ def scan(
             retry=retry,
             webhook=webhook,
             webhook_type=webhook_type,
+            screenshots=screenshots,
+            show_screenshots=show_screenshots,
         )
         return
 
@@ -300,6 +316,7 @@ def scan(
         http2=http2,
         categories=categories,
         exclude=exclude_set,
+        include=include_set,
         retry_blocked=retry,
     )
 
@@ -348,6 +365,26 @@ def scan(
 
     _handle_scan_export(results, username, export, output)
 
+    screenshot_data: dict[str, bytes] = {}
+    if screenshots:
+        try:
+            from argis.utils.screenshot import take_screenshots
+
+            screenshot_data = asyncio.run(take_screenshots(results, username))
+            if not screenshot_data and not quiet:
+                console.print("[dim]No screenshots captured (Playwright may not be installed).[/dim]")
+        except Exception as exc:
+            if verbose:
+                console.print(f"[dim][yellow]Screenshots failed: {exc}[/yellow][/dim]")
+
+    if show_screenshots and screenshot_data:
+        try:
+            from argis.utils.screenshot import print_terminal_screenshots
+            print_terminal_screenshots(screenshot_data)
+        except Exception as exc:
+            if verbose:
+                console.print(f"[dim][yellow]Terminal rendering failed: {exc}[/yellow][/dim]")
+
     if verbose:
         _print_error_summary(results)
 
@@ -368,6 +405,244 @@ def scan(
             f"@{username}: {found}/{total} platforms found",
         )
         console.print("[dim]Desktop notification sent.[/dim]")
+
+
+@app.command(rich_help_panel="Username Scanning")
+def scan_image(
+    image: Path = typer.Argument(..., help="Path to a screenshot image to OCR."),
+    scan: bool = typer.Option(
+        False, "--scan", "-s", help="Run argis scan on extracted usernames."
+    ),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress OCR text output."),
+):
+    """Extract usernames and URLs from a screenshot image via OCR.
+
+    \b
+    Examples:
+      argis scan-image screenshot.png
+      argis scan-image screenshot.png --scan
+    """
+    from argis.utils.ocr import extract_text, extract_urls, extract_usernames, extract_potential_usernames
+
+    text = extract_text(str(image))
+    if text is None:
+        console.print("[yellow]OCR not available. Install Tesseract (https://github.com/UB-Mannheim/tesseract/releases) then: pip install \"argis[screenshots]\"[/yellow]")
+        raise typer.Exit(code=1)
+
+    if not quiet:
+        from rich.markup import escape
+        console.print(f"\n[bold cyan]OCR text:[/bold cyan]\n[dim]{escape(text)}[/dim]")
+
+    urls = extract_urls(text)
+    usernames = extract_usernames(text, urls)
+    potentials = extract_potential_usernames(text)
+
+    if usernames:
+        console.print(f"\n[bold cyan]Usernames found ({len(usernames)}):[/bold cyan]")
+        for u in usernames:
+            console.print(f"  [green]@{u}[/green]")
+
+    if potentials and potentials != usernames:
+        extra = [p for p in potentials if p not in usernames]
+        if extra:
+            console.print(f"\n[bold yellow]Potential usernames ({len(extra)}):[/bold yellow]")
+            for u in extra:
+                console.print(f"  [yellow]{u}[/yellow]")
+            console.print("[dim]Tip: use argis scan <name> to scan a potential username[/dim]")
+
+    if not usernames and not potentials:
+        console.print("\n[dim]No usernames found.[/dim]")
+
+    if urls:
+        console.print(f"\n[bold cyan]URLs found ({len(urls)}):[/bold cyan]")
+        for u in urls:
+            console.print(f"  [link={u}]{u}[/link]")
+    else:
+        console.print("\n[dim]No URLs found.[/dim]")
+
+    all_targets = usernames + ([p for p in potentials if p not in usernames] if potentials else [])
+
+    if scan and all_targets:
+        from argis.core import ArgisEngine
+
+        for u in all_targets:
+            print(f"\n--- Scanning @{u} ---")
+            engine = ArgisEngine(u)
+            try:
+                results = asyncio.run(engine.run_scan(quiet=True))
+                found = sum(1 for r in results.values() if r["status"] == "FOUND")
+                print(f"  @{u}: {found}/{len(results)} platforms found")
+                for name, info in sorted(results.items()):
+                    if info["status"] == "FOUND":
+                        print(f"    + {name}: {info['url']}")
+            except Exception as exc:
+                print(f"  Scan failed: {exc}")
+
+
+@app.command(rich_help_panel="Username Scanning")
+def scan_face(
+    image: Path = typer.Argument(..., help="Path to an image to scan for faces."),
+    identify: bool = typer.Option(
+        False, "--identify", "-i", help="Identify the person via reverse search and auto-scan for profiles."
+    ),
+    search: bool = typer.Option(
+        False, "--search", "-s", help="Open reverse search in browser (no auto-scan)."
+    ),
+    engine: str = typer.Option(
+        "google", "--engine", "-e",
+        help="Reverse search engine: google, tineye, bing, yandex, saucenao, iqdb, imgops"
+    ),
+    crop: bool = typer.Option(
+        False, "--crop", "-c", help="Save face crops to disk."
+    ),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output directory for face crops (default: ~/.argis/faces/).",
+    ),
+    offline: bool = typer.Option(
+        False, "--offline", help="Skip online reverse search; use DeepFace offline only."
+    ),
+    site: Optional[str] = typer.Option(
+        None, "--site", help="Only scan specific platforms (comma-separated). e.g. 'X (Twitter),GitHub'."
+    ),
+):
+    """Detect faces, identify the person, and scan for their profiles.
+
+    \b
+    Examples:
+      argis scan-face photo.jpg
+      argis scan-face photo.jpg --search
+      argis scan-face photo.jpg --identify
+      argis scan-face photo.jpg --engine tineye --search
+      argis scan-face photo.jpg --identify --offline         # DeepFace only
+    """
+    from argis.utils.vision import detect_faces, crop_face, get_face_bytes, upload_to_engine, get_engine_url, ENGINES
+
+    faces = detect_faces(str(image))
+    if not faces:
+        console.print("[yellow]No faces detected or OpenCV not installed.[/yellow]")
+        console.print("[dim]Install: pip install \"argis[vision]\"[/dim]")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold cyan]Faces detected: {len(faces)}[/bold cyan]")
+    for i, (x, y, w, h) in enumerate(faces, 1):
+        console.print(f"  [green]#{i}[/green] at ({x}, {y}) size {w}x{h}")
+
+    crop_dir = output or (Path.home() / ".argis" / "faces")
+
+    if crop:
+        saved = []
+        for i, face in enumerate(faces, 1):
+            p = crop_face(str(image), face, crop_dir, i)
+            saved.append(p)
+        console.print(f"\n[green]Saved {len(saved)} face crop(s) to:[/green]")
+        for p in saved:
+            console.print(f"  [dim]{p}[/dim]")
+
+    if engine not in ENGINES:
+        console.print(f"[yellow]Unknown engine '{engine}'. Supported: {', '.join(ENGINES)}[/yellow]")
+        raise typer.Exit(code=1)
+
+    if search:
+        for i, face in enumerate(faces, 1):
+            face_bytes = get_face_bytes(str(image), face)
+            if not face_bytes:
+                continue
+            url = upload_to_engine(face_bytes, engine)
+            if url:
+                console.print(f"\n[bold cyan]Reverse search for face #{i}:[/bold cyan]")
+                console.print(f"  [link={url}]{url}[/link]")
+                webbrowser.open(url)
+            else:
+                crop_path = crop_face(str(image), face, crop_dir, i)
+                engine_url = get_engine_url(engine)
+                console.print(f"\n[bold cyan]Face #{i}: Could not auto-upload. Open {engine_url} and upload this file:[/bold cyan]")
+                console.print(f"  [dim]{crop_path}[/dim]")
+                webbrowser.open(engine_url)
+
+    if identify:
+        from argis.core import ArgisEngine
+        from argis.utils.vision import identify_face, find_celebrity_lookalike, setup_celebrity_db, analyze_face
+
+        for i, face in enumerate(faces, 1):
+            console.print(f"\n[bold cyan]Face #{i}: Identifying...[/bold cyan]")
+            face_bytes = get_face_bytes(str(image), face)
+            if not face_bytes:
+                console.print("  [red]Failed to read face crop.[/red]")
+                continue
+
+            name = None
+            crop_path = None
+
+            # Strategy 0: insightface offline demographic analysis
+            if not offline:
+                crop_path = crop_path or crop_face(str(image), face, crop_dir, i)
+                try:
+                    demo = analyze_face(str(crop_path))
+                    if demo and demo.get("detected"):
+                        parts = []
+                        if demo.get("age"):
+                            parts.append(f"age ~{int(demo['age'])}")
+                        if demo.get("gender"):
+                            parts.append(demo["gender"])
+                        if parts:
+                            console.print(f"  [dim]Demographics: {', '.join(parts)}[/dim]")
+                except Exception:
+                    pass
+
+            # Strategy 1: insightface offline celebrity lookalike
+            crop_path = crop_path or crop_face(str(image), face, crop_dir, i)
+            try:
+                celeb = find_celebrity_lookalike(str(crop_path))
+                if celeb:
+                    name = celeb["identity"]
+                    console.print(f"  [green]Face match:[/green] {name} ({celeb['similarity']} confidence)")
+            except Exception:
+                pass
+
+            # Strategy 2: host image + Google reverse search HTML
+            if not name and not offline:
+                try:
+                    name = identify_face(face_bytes)
+                    if name:
+                        console.print(f"  [green]Google reverse search:[/green] {name}")
+                except Exception as e:
+                    console.print(f"  [dim]Google reverse search failed: {e}[/dim]")
+
+            # Strategy 3: upload-to-engine + Playwright
+            if not name and not offline:
+                search_url = upload_to_engine(face_bytes, engine)
+                if search_url:
+                    try:
+                        from argis.utils.vision import identify_from_search
+                        import asyncio
+                        loop = asyncio.new_event_loop()
+                        name = loop.run_until_complete(identify_from_search(search_url))
+                        loop.close()
+                        if name:
+                            console.print(f"  [green]Playwright extraction:[/green] {name}")
+                    except Exception as e:
+                        console.print(f"  [dim]Playwright extraction failed: {e}[/dim]")
+
+            if name:
+                username = name.lower().replace(" ", "").replace(".", "")
+                print(f"\n--- Scanning @{username} ---")
+                include_set_face = set(s.strip() for s in site.split(",")) if site else None
+                eng = ArgisEngine(username, include=include_set_face)
+                try:
+                    results = asyncio.run(eng.run_scan(quiet=True))
+                    found = sum(1 for r in results.values() if r["status"] == "FOUND")
+                    print(f"  @{username}: {found}/{len(results)} platforms found")
+                    for pname, info in sorted(results.items()):
+                        if info["status"] == "FOUND":
+                            print(f"    + {pname}: {info['url']}")
+                except Exception as exc:
+                    print(f"  Scan failed: {exc}")
+            else:
+                console.print("  [yellow]Auto-identification failed. Open browser to search manually:[/yellow]")
+                engine_url = get_engine_url(engine)
+                console.print(f"  [dim]Crop saved: {crop_path}[/dim]")
+                console.print(f"  [dim]Open: {engine_url}[/dim]")
+                webbrowser.open(engine_url)
 
 
 def _show_platform_list(engine: ArgisEngine, categories: tuple | None) -> None:
@@ -463,6 +738,8 @@ def _run_batch_scan(
     retry: bool,
     webhook: str | None,
     webhook_type: str,
+    screenshots: bool = False,
+    show_screenshots: bool = False,
 ) -> None:
     if not file.exists():
         console.print(f"[bold red]File not found:[/bold red] {file}")
@@ -537,6 +814,26 @@ def _run_batch_scan(
         )
         if success:
             console.print("[dim]Webhook notification sent.[/dim]")
+
+    all_screenshot_data: dict[str, dict[str, bytes]] = {}
+    if screenshots:
+        try:
+            from argis.utils.screenshot import take_screenshots
+            for u, res in all_results.items():
+                data = asyncio.run(take_screenshots(res, u))
+                if data:
+                    all_screenshot_data[u] = data
+        except Exception:
+            pass
+
+    if show_screenshots and all_screenshot_data:
+        try:
+            from argis.utils.screenshot import print_terminal_screenshots
+            for u, data in all_screenshot_data.items():
+                console.print(f"\n[bold cyan]@{u}[/bold cyan]")
+                print_terminal_screenshots(data)
+        except Exception:
+            pass
 
 
 def _export_batch_results(all_results: dict, export: str | None, output: Path | None) -> None:
@@ -1286,6 +1583,20 @@ def categories():
     console.print("[bold]Available categories:[/bold]")
     for cat in cats:
         console.print(f"  [cyan]{cat}[/cyan]")
+
+
+@app.command(rich_help_panel="Utilities")
+def setup_celebrity_db(
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Redownload all celebrity images even if already cached."
+    ),
+):
+    """Download celebrity reference images for offline DeepFace lookalike matching."""
+    from argis.utils.vision import setup_celebrity_db as _setup
+    count = _setup(force=force)
+    db_path = Path.home() / ".argis" / "celebrities"
+    console.print(f"[green]Celebrity DB ready:[/green] {count} images in [dim]{db_path}[/dim]")
+    console.print("[dim]Now run [cyan]argis scan-face photo.jpg --identify --offline[/cyan] for offline matching.[/dim]")
 
 
 @app.command(rich_help_panel="Analysis")

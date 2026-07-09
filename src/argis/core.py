@@ -73,6 +73,7 @@ class ArgisEngine:
         retry_blocked: bool = True,
         retry_max_attempts: int = 3,
         exclude: set[str] | None = None,
+        include: set[str] | None = None,
     ):
         self.username = username
         self.proxy = proxy
@@ -83,6 +84,7 @@ class ArgisEngine:
         self.retry_blocked = retry_blocked
         self.retry_max_attempts = retry_max_attempts
         self.exclude = set(e.lower() for e in exclude) if exclude else None
+        self.include = set(i.lower() for i in include) if include else None
         self.sites = self._load_sites(sites_path)
         self._semaphore = asyncio.Semaphore(concurrency)
 
@@ -105,6 +107,15 @@ class ArgisEngine:
 
     def _filter_sites(self) -> dict:
         sites = self.sites
+
+        if self.include is not None:
+            sites = {
+                name: rules
+                for name, rules in sites.items()
+                if name.lower() in self.include
+            }
+            return sites
+
         if self.categories is not None:
             cats_lower = {c.lower() for c in self.categories}
             sites = {
