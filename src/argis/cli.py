@@ -93,6 +93,7 @@ def main(
                     ("categories", "List all available platform categories"),
                     ("search", "Search across all scan history"),
                     ("stats", "Aggregate statistics on scan results"),
+                    ("import-sites <source> <path>", "Import Sherlock/Maigret sites into Argis"),
                     ("setup-celebrity-db", "Download celebrity face data for offline DeepFace matching"),
                 ],
             }
@@ -1868,6 +1869,82 @@ def categories():
     console.print("[bold]Available categories:[/bold]")
     for cat in cats:
         console.print(f"  [cyan]{cat}[/cyan]")
+
+
+@app.command(name="import-sites", rich_help_panel="Utilities")
+def import_sites(
+    source: str = typer.Argument(..., help="Source DB: 'sherlock' or 'maigret'."),
+    path: Path = typer.Argument(..., help="Path to the source data.json."),
+    sites: Path = typer.Option(
+        Path("src/argis/sites.json"), "--sites", help="Argis sites.json to merge into."),
+    output: Optional[Path] = typer.Option(
+        None, "-o", "--output", help="Where to write merged DB (default: overwrite --sites)."),
+    overwrite_existing: bool = typer.Option(
+        False, "--overwrite-existing",
+        help="Let imported rules replace existing ones on name clash "
+             "(default: keep yours, rename the import)."),
+    verify: bool = typer.Option(
+        False, "--verify",
+        help="Run doctor on the merged DB immediately after import."),
+    dry_run: bool = typer.Option(
+        False, "--dry-run",
+        help="Report what would be imported without writing."),
+):
+    """Import Sherlock/Maigret site databases into Argis -- verified breadth.
+
+    Translates an external username-site database into Argis's detection schema,
+    protecting your hand-verified core on name clashes. Follow with argis doctor
+    (or --verify) so the imported breadth arrives *checked*, not assumed.
+
+    \b
+    Examples:
+      argis import-sites sherlock sherlock/resources/data.json --dry-run
+      argis import-sites maigret maigret/resources/data.json -o merged.json
+      argis import-sites sherlock data.json --verify
+    """
+    from argis.importers import load_and_import
+    from argis.utils.display import console
+
+    base = json.loads(sites.read_text("utf-8")) if sites.exists() else {}
+    result = load_and_import(
+        source, path, base, prefer_existing=not overwrite_existing)
+
+    console.print(
+        f"[bold cyan]{source.title()} import[/bold cyan]: "
+        f"[green]{result.imported}[/green] translated \u00b7 "
+        f"[yellow]{len(result.skipped)}[/yellow] skipped \u00b7 "
+        f"[magenta]{len(result.renamed)}[/magenta] renamed to protect your core"
+    )
+    console.print(
+        f"[dim]Merged DB size: {len(result.sites)} platforms "
+        f"(was {len(base)}).[/dim]"
+    )
+    if result.skipped[:12]:
+        console.print("[dim]Skipped (first 12, never guessed):[/dim]")
+        for name, why in result.skipped[:12]:
+            console.print(f"  [dim]\u2022 {name}: {why}[/dim]")
+
+    if dry_run:
+        console.print("[yellow]Dry run -- nothing written.[/yellow]")
+        raise typer.Exit()
+
+    dest = output or sites
+    dest.write_text(
+        json.dumps(result.sites, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    console.print(f"[green]Wrote {len(result.sites)} platforms \u2192 {dest}[/green]")
+
+    if verify:
+        from argis.health import HealthChecker
+        console.print("\n[bold cyan]Verifying imported rules with doctor\u2026[/bold cyan]")
+        report = asyncio.run(HealthChecker(sites_path=dest).run())
+        console.print(
+            f"[green]{len(report.passed)} healthy[/green] \u00b7 "
+            f"[bold red]{len(report.broken)} broken[/bold red] \u00b7 "
+            f"[yellow]{len(report.inconclusive)} inconclusive[/yellow]"
+        )
+        console.print("[dim]Broken/unverified imports can be pruned or fixed "
+                      "before they ever reach a user.[/dim]")
 
 
 @app.command(rich_help_panel="Utilities")
