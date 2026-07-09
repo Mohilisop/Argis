@@ -30,6 +30,13 @@ dev = [
 intel = [
     "pillow>=10.0",
 ]
+render = [
+    "playwright>=1.44",
+]
+all = [
+    "pillow>=10.0",
+    "playwright>=1.44",
+]
 screenshots = [
     "playwright>=1.40.0",
     "pytesseract>=0.3.10",

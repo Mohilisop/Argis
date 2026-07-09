@@ -60,39 +60,42 @@ def main(
 
         from rich.table import Table
 
-groups = {
-            "Username Scanning": [
-                ("scan <username>", "Search a username across 133 platforms"),
-                ("scan-image <img>", "Extract usernames/URLs from a screenshot via OCR"),
-                ("scan-face <img>", "Detect faces and reverse-search them for profiles"),
-            ],
-            "Intelligence": [
-                ("doctor", "Health-check every site rule and flag rot"),
-                ("link <username>", "Cluster accounts into real identities vs impersonators"),
-                ("guard <username>", "Hunt lookalike handles impersonating you"),
-            ],
-            "Reconnaissance": [
-                ("recon <host>", "Port scan, OS detection, traceroute, DNS, WHOIS, geo"),
-                ("domain <domain>", "DNS resolution, WHOIS, port scan, geo"),
-                ("discover <cidr>", "Sweep a subnet for live hosts"),
-                ("myip", "Show your public IP and geolocate it"),
-            ],
-            "History & Tracking": [
-                ("history <user>", "View past scan timestamps"),
-                ("clear-history <user>", "Delete scan history"),
-                ("monitor <user>", "Continuously watch a username for changes"),
-            ],
-            "Analysis": [
-                ("compare <u1> <u2>", "Compare two usernames side-by-side"),
-                ("wayback <username>", "Check Wayback Machine history for a username"),
-            ],
-            "Utilities": [
-                ("categories", "List all available platform categories"),
-                ("search", "Search across all scan history"),
-                ("stats", "Aggregate statistics on scan results"),
-                ("setup-celebrity-db", "Download celebrity face data for offline DeepFace matching"),
-            ],
-        }
+        groups = {
+                "Username Scanning": [
+                    ("scan <username>", "Search a username across 133 platforms"),
+                    ("scan-image <img>", "Extract usernames/URLs from a screenshot via OCR"),
+                    ("scan-face <img>", "Detect faces and reverse-search them for profiles"),
+                ],
+                "Intelligence": [
+                    ("doctor", "Health-check every site rule and flag rot"),
+                    ("link <username>", "Cluster accounts into real identities vs impersonators"),
+                    ("guard <username>", "Hunt lookalike handles impersonating you"),
+                ],
+                "Reconnaissance": [
+                    ("recon <host>", "Port scan, OS detection, traceroute, DNS, WHOIS, geo"),
+                    ("domain <domain>", "DNS resolution, WHOIS, port scan, geo"),
+                    ("discover <cidr>", "Sweep a subnet for live hosts"),
+                    ("myip", "Show your public IP and geolocate it"),
+                ],
+                "History & Tracking": [
+                    ("history <user>", "View past scan timestamps"),
+                    ("clear-history <user>", "Delete scan history"),
+                    ("monitor <user>", "Continuously watch a username for changes"),
+                ],
+                "Analysis": [
+                    ("compare <u1> <u2>", "Compare two usernames side-by-side"),
+                    ("exposure <username>", "Privacy risk score (0-100) + shrink plan"),
+                    ("timeline <username>", "Chronological timeline of account creation"),
+                    ("graph <username>", "Interactive pivot graph of accounts & references"),
+                    ("wayback <username>", "Check Wayback Machine history for a username"),
+                ],
+                "Utilities": [
+                    ("categories", "List all available platform categories"),
+                    ("search", "Search across all scan history"),
+                    ("stats", "Aggregate statistics on scan results"),
+                    ("setup-celebrity-db", "Download celebrity face data for offline DeepFace matching"),
+                ],
+            }
 
         for group_name, cmds in groups.items():
             table = Table(show_header=False, box=None, padding=(0, 2))
@@ -1513,6 +1516,283 @@ def monitor(
 
 
 @app.command(rich_help_panel="Analysis")
+def exposure(
+    username: str = typer.Argument(..., help="Handle to assess for privacy exposure."),
+    category: Optional[str] = typer.Option(
+        None, "--category", "-c", help="Comma-separated category filter for the pre-scan."
+    ),
+    timeout: float = typer.Option(12.0, "--timeout", help="Per-request timeout."),
+    concurrency: int = typer.Option(12, "--concurrency", help="Max simultaneous requests."),
+    proxy: Optional[str] = typer.Option(None, "--proxy", help="Route through a proxy."),
+    tor: bool = typer.Option(False, "--tor", help="Route through local Tor SOCKS5."),
+    render: bool = typer.Option(
+        False, "--render", help="Use a headless browser for JS-gated profiles (needs playwright)."
+    ),
+):
+    """Privacy risk score (0-100), grade (A-F), and ranked shrink plan.
+
+    Scans the handle, then scores exposure across footprint breadth, category
+    sensitivity, email leakage, real-name consistency, avatar reuse, and cross-
+    platform interlinking. The shrink plan lists accounts to take down first.
+
+    \b
+    Examples:
+      argis exposure johndoe
+      argis exposure johndoe --category social,coding
+      argis exposure johndoe --render
+    """
+    from argis.core import ArgisEngine
+    from argis.exposure import assess
+
+    from argis.utils.display import console
+
+    cats = tuple(c.strip().lower() for c in category.split(",")) if category else None
+    console.print(f"[bold cyan]Scanning[/bold cyan] @{username} for exposure assessment\u2026")
+    engine = ArgisEngine(
+        username, timeout=timeout, concurrency=concurrency,
+        categories=cats, proxy=proxy, use_tor=tor,
+    )
+    results = asyncio.run(engine.run_scan(quiet=True))
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND"}
+
+    emails: list[str] = []
+    for r in found.values():
+        if r.get("emails"):
+            emails.extend(r["emails"])
+
+    display_names: dict[str, str] = {}
+    for p, r in found.items():
+        if r.get("display_name"):
+            display_names[p] = r["display_name"]
+
+    cats_map = {}
+    sites = engine._filter_sites()
+    for p, rules in sites.items():
+        cats_map[p] = rules.get("category", "forums")
+
+    report = assess(username, found, emails=emails,
+                    display_names=display_names, categories=cats_map)
+
+    from rich.table import Table
+    from rich.panel import Panel
+
+    color = "green" if report.grade in ("A", "B") else "yellow" if report.grade == "C" else "red"
+    panel = Panel.fit(
+        f"[bold cyan]Score:[/bold cyan] [bold {color}]{report.overall}/100[/bold {color}]  "
+        f"[bold cyan]Grade:[/bold cyan] [{color}]{report.grade}[/{color}]\n"
+        f"[bold cyan]Accounts found:[/bold cyan] {report.found}\n"
+        f"[bold cyan]Emails leaked:[/bold cyan] {len(report.emails_leaked)}\n"
+        f"[bold cyan]Name consistency:[/bold cyan] {report.real_name_consistency:.0%}",
+        title=f"Exposure report \u2014 @{username}",
+    )
+    console.print()
+    console.print(panel)
+
+    console.print("\n[bold]Factor breakdown:[/bold]")
+    t = Table(show_header=False, box=None)
+    t.add_column("Factor", style="cyan")
+    t.add_column("Score", justify="right")
+    t.add_column("Detail", style="dim")
+    for f in report.factors:
+        t.add_row(f.name, f"{f.score:.0%}", f.detail)
+    console.print(t)
+
+    if report.shrink_plan:
+        console.print("\n[bold]Shrink plan (highest impact first):[/bold]")
+        st = Table()
+        st.add_column("#")
+        st.add_column("Platform", style="cyan")
+        st.add_column("Impact", justify="right")
+        st.add_column("Reason", style="dim")
+        for i, a in enumerate(report.shrink_plan, 1):
+            st.add_row(str(i), a.platform, f"{a.impact:.0%}", a.reason)
+        console.print(st)
+
+    if report.category_breakdown:
+        console.print("\n[bold]Category breakdown:[/bold]")
+        ct = Table(show_header=True, box=None)
+        ct.add_column("Category", style="cyan")
+        ct.add_column("Count", justify="right")
+        for cat, cnt in sorted(report.category_breakdown.items(),
+                                key=lambda x: -x[1]):
+            ct.add_row(cat, str(cnt))
+        console.print(ct)
+    console.print()
+
+
+@app.command(rich_help_panel="Analysis")
+def timeline(
+    username: str = typer.Argument(..., help="Handle to build a timeline for."),
+    no_page_dates: bool = typer.Option(
+        False, "--no-page-dates", help="Skip fetching on-page joined/member-since metadata."
+    ),
+    category: Optional[str] = typer.Option(
+        None, "--category", "-c", help="Comma-separated category filter."
+    ),
+    timeout: float = typer.Option(15.0, "--timeout", help="Per-request timeout."),
+    concurrency: int = typer.Option(12, "--concurrency", help="Max simultaneous requests."),
+    proxy: Optional[str] = typer.Option(None, "--proxy", help="Route through a proxy."),
+    tor: bool = typer.Option(False, "--tor", help="Route through local Tor SOCKS5."),
+    render: bool = typer.Option(
+        False, "--render", help="Use a headless browser for JS-gated profiles (needs playwright)."
+    ),
+):
+    """Chronological timeline of when accounts were created.
+
+    Queries the Wayback Machine CDX API and scrapes on-page "joined" metadata
+    to estimate the earliest creation date per platform. Flags creation bursts
+    that may indicate impersonation.
+
+    \b
+    Examples:
+      argis timeline johndoe
+      argis timeline johndoe --no-page-dates
+      argis timeline johndoe --render
+    """
+    from argis.core import ArgisEngine
+    from argis.timeline import build_timeline, format_timeline
+
+    from argis.utils.display import console
+
+    cats = tuple(c.strip().lower() for c in category.split(",")) if category else None
+    console.print(f"[bold cyan]Scanning[/bold cyan] @{username}\u2026")
+    engine = ArgisEngine(
+        username, timeout=timeout, concurrency=concurrency,
+        categories=cats, proxy=proxy, use_tor=tor,
+    )
+    results = asyncio.run(engine.run_scan(quiet=True))
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND"}
+    if not found:
+        console.print("[yellow]No accounts found.[/yellow]")
+        raise typer.Exit()
+
+    console.print(f"[green]{len(found)}[/green] accounts. Querying Wayback CDX and page dates\u2026")
+    report = asyncio.run(build_timeline(
+        username, found, fetch_page_dates=not no_page_dates,
+    ))
+
+    from rich.table import Table
+    t = Table(title=f"Timeline \u2014 @{username}")
+    t.add_column("First seen", style="cyan", no_wrap=True)
+    t.add_column("Platform", style="white")
+    t.add_column("URL", style="dim", overflow="fold")
+    for a in report.accounts:
+        first = a.first_seen or "\u2014"
+        t.add_row(first, a.platform, a.url)
+    console.print()
+    console.print(t)
+
+    if report.anomalies:
+        console.print("\n[bold red]Creation bursts detected:[/bold red]")
+        for b in report.anomalies:
+            console.print(
+                f"  {b['date']}: [yellow]{b['count']}[/yellow] accounts in "
+                f"{b['window_days']}d \u2014 {', '.join(b['platforms'])}"
+            )
+        console.print(
+            "[dim]Multiple accounts created in quick succession can indicate "
+            "impersonation or sockpuppetry.[/dim]"
+        )
+    else:
+        console.print("\n[dim]No anomalous creation bursts detected.[/dim]")
+    console.print()
+
+
+@app.command(rich_help_panel="Analysis")
+def graph(
+    username: str = typer.Argument(..., help="Seed handle to build a pivot graph from."),
+    expand: bool = typer.Option(
+        False, "--expand", "-e", help="One-hop expansion: scrape profiles for referenced handles/emails."
+    ),
+    output: Path = typer.Option(
+        Path("pivot-graph.html"), "--output", "-o", help="Output HTML file for interactive graph."
+    ),
+    graphml_output: Optional[Path] = typer.Option(
+        None, "--graphml", help="Optional GraphML export path (for Maltego/Gephi)."
+    ),
+    category: Optional[str] = typer.Option(
+        None, "--category", "-c", help="Comma-separated category filter."
+    ),
+    timeout: float = typer.Option(12.0, "--timeout", help="Per-request timeout."),
+    concurrency: int = typer.Option(10, "--concurrency", help="Max simultaneous requests."),
+    proxy: Optional[str] = typer.Option(None, "--proxy", help="Route through a proxy."),
+    tor: bool = typer.Option(False, "--tor", help="Route through local Tor SOCKS5."),
+    render: bool = typer.Option(
+        False, "--render", help="Use a headless browser for JS-gated profiles (needs playwright)."
+    ),
+):
+    """Build an interactive pivot graph from a seed handle.
+
+    Scans the handle, maps each found account as a node, and optionally
+    expands one hop by scraping profiles for referenced handles and emails.
+    Exports an interactive HTML graph (vis-network) and optional GraphML.
+
+    \b
+    Examples:
+      argis graph johndoe
+      argis graph johndoe --expand
+      argis graph johndoe --expand --graphml pivot.graphml
+      argis graph johndoe --expand --render
+    """
+    from argis.core import ArgisEngine
+    from argis.graph import build_graph, to_html, to_graphml
+    from rich.tree import Tree
+
+    from argis.utils.display import console
+
+    cats = tuple(c.strip().lower() for c in category.split(",")) if category else None
+    console.print(f"[bold cyan]Scanning[/bold cyan] @{username}\u2026")
+    engine = ArgisEngine(
+        username, timeout=timeout, concurrency=concurrency,
+        categories=cats, proxy=proxy, use_tor=tor,
+    )
+    results = asyncio.run(engine.run_scan(quiet=True))
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND"}
+    if not found:
+        console.print("[yellow]No accounts found.[/yellow]")
+        raise typer.Exit()
+
+    console.print(f"[green]{len(found)}[/green] accounts found. Building pivot graph\u2026")
+    from argis.render import playwright_available
+    if render and not playwright_available():
+        console.print("[yellow]--render requested but Playwright isn't installed. "
+                      "Run: pip install \"argis[render]\" && playwright install chromium. "
+                      "Falling back to server HTML.[/yellow]")
+    pg = asyncio.run(build_graph(
+        username, expand_hops=1 if expand else 0, max_expand=8,
+        category=cats, timeout=timeout, concurrency=concurrency,
+        proxy=proxy, use_tor=tor, render=render,
+    ))
+
+    html = to_html(pg)
+    output.write_text(html, encoding="utf-8")
+    console.print(f"[green]Pivot graph written to[/green] {output}")
+
+    if graphml_output:
+        graphml = to_graphml(pg)
+        graphml_output.write_text(graphml, encoding="utf-8")
+        console.print(f"[green]GraphML exported to[/green] {graphml_output}")
+
+    seed_node = pg.nodes.get(username)
+    tree = Tree(f"[bold cyan]@{pg.seed}[/bold cyan] (seed)")
+    kind_icons = {"account": "\U0001f464", "handle_ref": "\U0001f517", "email": "\u2709\ufe0f", "seed": "\U0001f34e"}
+    for nid, n in pg.nodes.items():
+        if nid == pg.seed:
+            continue
+        icon = kind_icons.get(n.kind, "\u2022")
+        label = f"{icon} [white]{n.label}[/white]"
+        if n.platform:
+            label += f" [dim]({n.platform})[/dim]"
+        tree.add(label)
+    console.print()
+    console.print(tree)
+    console.print(
+        f"\n[dim]Graph: {len(pg.nodes)} node(s), {len(pg.edges)} edge(s)"
+        f"{' (one-hop expanded)' if expand else ''}[/dim]"
+    )
+
+
+@app.command(rich_help_panel="Analysis")
 def search(
     query: str = typer.Argument(..., help="Search term to look for."),
     field: str = typer.Option(
@@ -1759,6 +2039,9 @@ def guard(
     concurrency: int = typer.Option(20, "--concurrency", help="Max simultaneous requests."),
     proxy: Optional[str] = typer.Option(None, "--proxy", help="Route through a proxy."),
     tor: bool = typer.Option(False, "--tor", help="Route through local Tor SOCKS5."),
+    render: bool = typer.Option(
+        False, "--render", help="Use a headless browser for JS-gated profiles (needs playwright)."
+    ),
 ):
     """Hunt for accounts impersonating you on lookalike handles.
 
@@ -1793,6 +2076,7 @@ def guard(
         username, reference_url=reference, max_variants=max_variants,
         warn_threshold=threshold, category=cats, timeout=timeout,
         concurrency=concurrency, proxy=proxy, use_tor=tor,
+        render=render,
     ))
 
     if report.reference is None:
@@ -1860,6 +2144,9 @@ def link(
     concurrency: int = typer.Option(12, "--concurrency", help="Max simultaneous requests."),
     proxy: Optional[str] = typer.Option(None, "--proxy", help="Route through a proxy."),
     tor: bool = typer.Option(False, "--tor", help="Route through local Tor SOCKS5."),
+    render: bool = typer.Option(
+        False, "--render", help="Use a headless browser for JS-gated profiles (needs playwright)."
+    ),
 ):
     """Scan a handle, then cluster the hits into real identities vs impersonators.
 
@@ -1872,11 +2159,17 @@ def link(
       argis link johndoe
       argis link johndoe --threshold 0.7
       argis link johndoe --no-avatar --category social,coding
+      argis link johndoe --render
     """
     from argis.core import ArgisEngine
     from argis.correlate import correlate
 
     cats = tuple(c.strip().lower() for c in category.split(",")) if category else None
+    from argis.render import playwright_available
+    if render and not playwright_available():
+        console.print("[yellow]--render requested but Playwright isn't installed. "
+                      "Run: pip install \"argis[render]\" && playwright install chromium. "
+                      "Falling back to server HTML.[/yellow]")
     console.print(f"[bold cyan]Scanning[/bold cyan] @{username}...")
     engine = ArgisEngine(
         username, timeout=timeout, concurrency=concurrency,
@@ -1894,6 +2187,7 @@ def link(
     report = asyncio.run(correlate(
         username, found, threshold=threshold, fetch_avatar=not no_avatar,
         timeout=timeout, concurrency=concurrency, proxy=proxy, use_tor=tor,
+        render=render,
     ))
 
     if not report.pillow and not no_avatar:

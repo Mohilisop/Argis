@@ -22,9 +22,9 @@ import io
 import re
 from dataclasses import dataclass, field
 
-import httpx
+from argis.intel_http import AsyncFetcher
 
-from argis.utils.network import build_client, random_user_agent
+from argis.utils.network import random_user_agent
 
 try:
     from PIL import Image
@@ -128,16 +128,14 @@ def _clean_name(raw: str, platform: str, handle: str) -> str:
 
 
 async def _fetch_signals(
-    client: httpx.AsyncClient, platform: str, url: str, handle: str,
+    fetcher, platform: str, url: str, handle: str,
     fetch_avatar: bool,
 ) -> Signals:
-    headers = {"User-Agent": random_user_agent()}
-    try:
-        r = await client.get(url, headers=headers)
-    except httpx.HTTPError as exc:
-        return Signals(platform, url, error=type(exc).__name__)
+    res = await fetcher.get(url)
+    if res.error or not res.text:
+        return Signals(platform, url, error=res.error or "empty")
 
-    html = r.text[:60000]
+    html = res.text[:80000]
     sig = Signals(platform, url)
 
     name = ""
@@ -161,12 +159,9 @@ async def _fetch_signals(
     if fetch_avatar and _HAS_PIL:
         im = _OG_IMAGE.search(html)
         if im:
-            try:
-                ir = await client.get(im.group(1), headers=headers)
-                if ir.status_code == 200:
-                    sig.avatar_hash = _dhash(ir.content)
-            except httpx.HTTPError:
-                pass
+            data = await fetcher.get_bytes(im.group(1))
+            if data:
+                sig.avatar_hash = _dhash(data)
     return sig
 
 
@@ -249,17 +244,19 @@ async def correlate(
     concurrency: int = 12,
     proxy: str | None = None,
     use_tor: bool = False,
+    render: bool = False,
 ) -> LinkReport:
     targets = {p: info["url"] for p, info in found.items()
                if info.get("status") == "FOUND" and info.get("url")}
     sem = asyncio.Semaphore(concurrency)
 
-    async with build_client(
-        proxy=proxy, use_tor=use_tor, timeout=timeout,
-    ) as client:
+    async with AsyncFetcher(
+        timeout=timeout, concurrency=concurrency, proxy=proxy,
+        use_tor=use_tor, render=render,
+    ) as fetcher:
         async def one(p: str, u: str) -> Signals:
             async with sem:
-                return await _fetch_signals(client, p, u, handle, fetch_avatar)
+                return await _fetch_signals(fetcher, p, u, handle, fetch_avatar)
         sigs = await asyncio.gather(*(one(p, u) for p, u in targets.items()))
 
     signals = {s.platform: s for s in sigs if s.error is None}
