@@ -26,11 +26,11 @@ LOGO_SUB = "[cyan]the all-seeing OSINT scanner[/cyan]"
 
 # Blocky ASCII wordmark for "ARGIS", one string per row.
 _ARGIS_ART = [
-    " █    ██    ██   ███   ██ ",
-    "█ █   █ █   █     █   █   ",
-    "███   ██    █ █   █    █  ",
-    "█ █   █ █   █ █   █     █ ",
-    "█ █   █ █    ██   ███  ██ ",
+    " #    ##    ##   ###   ## ",
+    "# #   # #   #     #   #   ",
+    "###   ##    # #   #    #  ",
+    "# #   # #   # #   #     # ",
+    "# #   # #    ##   ###  ## ",
 ]
 
 # Gradient endpoints (cyan -> blue), matching the eye logo's palette.
