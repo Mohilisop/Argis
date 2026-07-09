@@ -79,6 +79,7 @@ def main(
             ],
 "Analysis": [
                 ("compare <u1> <u2>", "Compare two usernames side-by-side"),
+                ("guard <username>", "Hunt lookalike handles impersonating you"),
                 ("link <username>", "Cluster accounts into real identities vs impersonators"),
                 ("wayback <username>", "Check Wayback Machine history for a username"),
             ],
@@ -1728,6 +1729,114 @@ def compare(
     console.print(table)
     console.print(
         f"[dim]Overlap: {len(both)} shared / {len(set1 | set2)} unique platforms.[/dim]"
+    )
+
+
+@app.command(rich_help_panel="Analysis")
+def guard(
+    username: str = typer.Argument(..., help="A handle YOU own, to defend."),
+    reference: Optional[str] = typer.Option(
+        None, "--reference", "-r",
+        help="URL of a profile that's definitely you (sets the match fingerprint)."
+    ),
+    threshold: float = typer.Option(
+        0.55, "--threshold", "-t", help="Similarity at/above which a lookalike is flagged."
+    ),
+    max_variants: int = typer.Option(
+        120, "--max-variants", help="Cap on generated lookalike handles."
+    ),
+    list_variants: bool = typer.Option(
+        False, "--list", "-l", help="Print generated variants and exit (no scan)."
+    ),
+    category: Optional[str] = typer.Option(
+        None, "--category", "-c", help="Limit scans to these categories."
+    ),
+    timeout: float = typer.Option(12.0, "--timeout", help="Per-request timeout."),
+    concurrency: int = typer.Option(20, "--concurrency", help="Max simultaneous requests."),
+    proxy: Optional[str] = typer.Option(None, "--proxy", help="Route through a proxy."),
+    tor: bool = typer.Option(False, "--tor", help="Route through local Tor SOCKS5."),
+):
+    """Hunt for accounts impersonating you on lookalike handles.
+
+    Generates confusable variants of your handle (separators, affixes, leet,
+    Unicode homoglyphs), scans them all, and scores each registered lookalike
+    against your real profile -- so you find the impostor on 'j0hndoe_official'
+    before your followers do.
+
+    \b
+    Examples:
+      argis guard johndoe
+      argis guard johndoe --reference https://github.com/johndoe
+      argis guard johndoe --list
+      argis guard johndoe --threshold 0.65 --category social
+    """
+    from argis.impersonate import generate_variants, guard as run_guard
+
+    if list_variants:
+        variants = generate_variants(username, max_variants=max_variants)
+        console.print(f"[bold cyan]{len(variants)} lookalike variants[/bold cyan] "
+                      f"for @{username}:\n")
+        for v in variants:
+            console.print(f"  [dim]\u2022[/dim] {v}")
+        raise typer.Exit()
+
+    cats = tuple(c.strip().lower() for c in category.split(",")) if category else None
+    console.print(
+        f"[bold cyan]Guarding[/bold cyan] @{username} -- generating lookalikes, "
+        "scanning, and correlating\u2026 [dim](this fans out, give it a moment)[/dim]"
+    )
+    report = asyncio.run(run_guard(
+        username, reference_url=reference, max_variants=max_variants,
+        warn_threshold=threshold, category=cats, timeout=timeout,
+        concurrency=concurrency, proxy=proxy, use_tor=tor,
+    ))
+
+    if report.reference is None:
+        console.print(
+            "[yellow]Couldn't build a reference fingerprint (no usable profile "
+            "for your own handle, and no --reference given). Showing raw "
+            "lookalike hits without similarity scoring.[/yellow]"
+        )
+
+    console.print(
+        f"[dim]Scanned {report.variants_scanned} variants \u00b7 "
+        f"{report.hits} registered lookalike account(s) found.[/dim]\n"
+    )
+
+    imps = report.impersonators
+    if imps:
+        t = Table(title="\U0001F6A8  Likely impersonators", title_style="bold red")
+        t.add_column("Variant", style="red")
+        t.add_column("Platform", style="cyan")
+        t.add_column("Match", justify="right")
+        t.add_column("Display name")
+        t.add_column("URL", style="dim")
+        for m in imps:
+            t.add_row(m.variant, m.platform, f"{m.score:.0%}",
+                      m.display_name or "\u2014", m.url)
+        console.print(t)
+    else:
+        console.print("[green]No lookalike account crossed the impersonation "
+                      "threshold. \U0001F44D[/green]")
+
+    looks = report.lookalikes
+    if looks:
+        console.print()
+        t = Table(title=f"\u2139\ufe0f  Other registered lookalikes "
+                        f"(below {report.warn_threshold:.0%})")
+        t.add_column("Variant")
+        t.add_column("Platform", style="cyan")
+        t.add_column("Match", justify="right")
+        t.add_column("URL", style="dim")
+        for m in looks[:25]:
+            t.add_row(m.variant, m.platform, f"{m.score:.0%}", m.url)
+        console.print(t)
+        if len(looks) > 25:
+            console.print(f"[dim]\u2026and {len(looks) - 25} more.[/dim]")
+
+    console.print(
+        f"\n[dim]{len(imps)} flagged \u00b7 {len(looks)} benign lookalikes \u00b7 "
+        f"threshold {report.warn_threshold:.0%}[/dim]"
     )
 
 
