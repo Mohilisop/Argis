@@ -1,0 +1,50 @@
+name: Site rule health check
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+
+      - name: Run health check
+        id: health
+        run: |
+          argis doctor --report health-report.md --json health-report.json --exit-code \
+            || echo "broken=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update issue on broken rules
+        if: steps.health.outputs.broken == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh issue list --label rule-rot --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file health-report.md
+          else
+            gh issue create \
+              --title "\U0001FA7A Site rule health: broken detections" \
+              --body-file health-report.md \
+              --label rule-rot
+          fi
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-report
+          path: |
+            health-report.md
+            health-report.json

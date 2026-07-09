@@ -85,6 +85,7 @@ def main(
             ],
             "Utilities": [
                 ("categories", "List all available platform categories"),
+                ("doctor", "Health-check every site rule and flag rot"),
                 ("setup-celebrity-db", "Download celebrity face data for offline DeepFace matching"),
             ],
         }
@@ -1583,6 +1584,85 @@ def categories():
     console.print("[bold]Available categories:[/bold]")
     for cat in cats:
         console.print(f"  [cyan]{cat}[/cyan]")
+
+
+@app.command(rich_help_panel="Utilities")
+def doctor(
+    only: Optional[str] = typer.Option(
+        None, "--only", help="Comma-separated platforms to health-check (default: all)."
+    ),
+    timeout: float = typer.Option(12.0, "--timeout", help="Per-request timeout in seconds."),
+    concurrency: int = typer.Option(15, "--concurrency", help="Max simultaneous requests."),
+    proxy: Optional[str] = typer.Option(None, "--proxy", help="Route through a proxy."),
+    tor: bool = typer.Option(False, "--tor", help="Route through a local Tor SOCKS5 proxy."),
+    http2: bool = typer.Option(False, "--http2", help="Enable HTTP/2."),
+    report: Optional[Path] = typer.Option(
+        None, "--report", help="Write a Markdown health report to this path."
+    ),
+    json_out: Optional[Path] = typer.Option(
+        None, "--json", help="Write a JSON health report to this path."
+    ),
+    exit_code: bool = typer.Option(
+        False, "--exit-code", help="Exit with code 1 if any rule is BROKEN (for CI)."
+    ),
+):
+    """Check every site rule against a known-real and known-fake username.
+
+    Surfaces rules that have rotted — either matching users that can't exist,
+    or failing to see accounts that do — plus duplicate rule names.
+
+    \b
+    Examples:
+      argis doctor
+      argis doctor --only GitHub,Reddit,Steam
+      argis doctor --report health.md --json health.json --exit-code
+    """
+    from argis.health import HealthChecker
+
+    only_set = {o.strip() for o in only.split(",") if o.strip()} if only else None
+    checker = HealthChecker(
+        timeout=timeout, concurrency=concurrency, proxy=proxy,
+        use_tor=tor, http2=http2, only=only_set,
+    )
+
+    console.print("[bold cyan]Running site-rule health check\u2026[/bold cyan]")
+    report_obj = asyncio.run(checker.run())
+
+    table = Table(title="Argis rule health")
+    table.add_column("Platform", style="cyan", no_wrap=True)
+    table.add_column("Check")
+    table.add_column("Expected")
+    table.add_column("Got")
+    table.add_column("Verdict")
+    styles = {"PASS": "green", "BROKEN": "bold red", "INCONCLUSIVE": "yellow"}
+    for c in sorted(report_obj.checks, key=lambda c: (c.verdict != "BROKEN", c.site)):
+        table.add_row(
+            c.site, c.kind, c.expected, c.got,
+            f"[{styles.get(c.verdict, 'white')}]{c.verdict}[/]",
+        )
+    console.print(table)
+
+    console.print(
+        f"\n[green]{len(report_obj.passed)} healthy[/green] \u00b7 "
+        f"[bold red]{len(report_obj.broken)} broken[/bold red] \u00b7 "
+        f"[yellow]{len(report_obj.inconclusive)} inconclusive[/yellow]"
+    )
+    if report_obj.duplicates:
+        console.print(
+            f"[yellow]WARNING: {len(report_obj.duplicates)} duplicate rule name(s):[/yellow] "
+            + ", ".join(report_obj.duplicates)
+        )
+
+    if report:
+        report.write_text(report_obj.to_markdown(), encoding="utf-8")
+        console.print(f"[dim]Markdown report written to {report}[/dim]")
+    if json_out:
+        import json as _json
+        json_out.write_text(_json.dumps(report_obj.to_dict(), indent=2), encoding="utf-8")
+        console.print(f"[dim]JSON report written to {json_out}[/dim]")
+
+    if exit_code and report_obj.broken:
+        raise typer.Exit(code=1)
 
 
 @app.command(rich_help_panel="Utilities")
