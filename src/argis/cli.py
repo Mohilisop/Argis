@@ -380,6 +380,10 @@ def scan(
 
     if dossier:
         from argis.dossier import build_dossier, print_dossier, to_html_report, build_dossier_graph
+        dossier_path = dossier.resolve()
+        if dossier_path.suffix != ".html":
+            dossier_path = dossier_path / f"{username}-dossier.html"
+        dossier_path.parent.mkdir(parents=True, exist_ok=True)
         cats = {name: rules.get("category", "uncategorized")
                 for name, rules in engine.sites.items()}
         dsr = asyncio.run(build_dossier(
@@ -390,9 +394,9 @@ def scan(
             username, timeout=timeout or 7.0, concurrency=concurrency or 30,
             proxy=proxy, use_tor=tor))
         print_dossier(dsr, console)
-        dossier.write_text(to_html_report(dsr, graph_payload=graph_payload),
-                           encoding="utf-8")
-        console.print(f"[green]Full dossier written \u2192 {dossier}[/green]")
+        dossier_path.write_text(to_html_report(dsr, graph_payload=graph_payload),
+                                encoding="utf-8")
+        console.print(f"[green]Full dossier written \u2192 [underline]{dossier_path.resolve()}[/underline][/green]")
 
     screenshot_data: dict[str, bytes] = {}
     if screenshots:
