@@ -77,11 +77,10 @@ def main(
                 ("clear-history <user>", "Delete scan history"),
                 ("monitor <user>", "Continuously watch a username for changes"),
             ],
-            "Analysis": [
-                ("compare <u1> <u2>", "Compare two usernames side by side"),
-                ("wayback <user>", "Check historical profile snapshots"),
-                ("search <query>", "Search across all scan history"),
-                ("stats", "Aggregate statistics across all users"),
+"Analysis": [
+                ("compare <u1> <u2>", "Compare two usernames side-by-side"),
+                ("link <username>", "Cluster accounts into real identities vs impersonators"),
+                ("wayback <username>", "Check Wayback Machine history for a username"),
             ],
             "Utilities": [
                 ("categories", "List all available platform categories"),
@@ -1729,6 +1728,105 @@ def compare(
     console.print(table)
     console.print(
         f"[dim]Overlap: {len(both)} shared / {len(set1 | set2)} unique platforms.[/dim]"
+    )
+
+
+@app.command(rich_help_panel="Analysis")
+def link(
+    username: str = typer.Argument(..., help="Handle to scan and correlate."),
+    threshold: float = typer.Option(
+        0.62, "--threshold", "-t", help="Similarity cutoff for 'same person' (0-1)."
+    ),
+    no_avatar: bool = typer.Option(
+        False, "--no-avatar", help="Skip avatar hashing (text-only correlation)."
+    ),
+    category: Optional[str] = typer.Option(
+        None, "--category", "-c", help="Limit the pre-scan to these categories."
+    ),
+    timeout: float = typer.Option(12.0, "--timeout", help="Per-request timeout."),
+    concurrency: int = typer.Option(12, "--concurrency", help="Max simultaneous requests."),
+    proxy: Optional[str] = typer.Option(None, "--proxy", help="Route through a proxy."),
+    tor: bool = typer.Option(False, "--tor", help="Route through local Tor SOCKS5."),
+):
+    """Scan a handle, then cluster the hits into real identities vs impersonators.
+
+    Answers the question no other scanner does: of everywhere this handle
+    exists, which accounts are the SAME person -- and which are namesakes or
+    impostors wearing the handle?
+
+    \b
+    Examples:
+      argis link johndoe
+      argis link johndoe --threshold 0.7
+      argis link johndoe --no-avatar --category social,coding
+    """
+    from argis.core import ArgisEngine
+    from argis.correlate import correlate
+
+    cats = tuple(c.strip().lower() for c in category.split(",")) if category else None
+    console.print(f"[bold cyan]Scanning[/bold cyan] @{username}...")
+    engine = ArgisEngine(
+        username, timeout=timeout, concurrency=concurrency,
+        categories=cats, proxy=proxy, use_tor=tor,
+    )
+    results = asyncio.run(engine.run_scan(quiet=True))
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND"}
+    if not found:
+        console.print("[yellow]No accounts found -- nothing to correlate.[/yellow]")
+        raise typer.Exit()
+
+    console.print(
+        f"[green]{len(found)}[/green] accounts found. Correlating identities..."
+    )
+    report = asyncio.run(correlate(
+        username, found, threshold=threshold, fetch_avatar=not no_avatar,
+        timeout=timeout, concurrency=concurrency, proxy=proxy, use_tor=tor,
+    ))
+
+    if not report.pillow and not no_avatar:
+        console.print(
+            "[dim yellow]Pillow not installed -- running text-only "
+            "(no avatar matching). pip install pillow for full power.[/dim yellow]"
+        )
+
+    for i, c in enumerate([c for c in report.clusters if c.label == "identity"], 1):
+        t = Table(title=f"\U0001F9EC Identity cluster #{i}  "
+                        f"(confidence {c.confidence:.0%})")
+        t.add_column("Platform", style="cyan")
+        t.add_column("Display name")
+        t.add_column("URL", style="dim")
+        for m in c.members:
+            s = report.signals[m]
+            t.add_row(m, s.display_name or "\u2014", s.url)
+        console.print(t)
+
+    imp = report.impersonators
+    if imp:
+        console.print()
+        t = Table(title="\u26a0\ufe0f  Possible impersonators / namesakes",
+                  title_style="bold red")
+        t.add_column("Platform", style="red")
+        t.add_column("Display name")
+        t.add_column("Why flagged", style="dim")
+        primary = report.primary
+        for m in imp:
+            s = report.signals[m]
+            best = max(
+                (sc for a, b, sc in report.edges
+                 if m in (a, b) and (a in primary.members or b in primary.members)),
+                default=0.0,
+            )
+            t.add_row(m, s.display_name or "\u2014",
+                      f"peak similarity to you: {best:.0%} (< {threshold:.0%})")
+        console.print(t)
+    else:
+        console.print("\n[green]No outliers -- every account looks like the same "
+                      "person.[/green]")
+
+    console.print(
+        f"\n[dim]{len(report.clusters)} cluster(s) from {len(report.signals)} "
+        f"profiles \u00b7 threshold {threshold:.0%} \u00b7 "
+        f"avatar matching {'on' if report.pillow and not no_avatar else 'off'}[/dim]"
     )
 
 
