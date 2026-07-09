@@ -1,0 +1,86 @@
+site_name: Argis
+site_description: The all-seeing OSINT scanner — hunt down accounts across 133+ platforms
+site_url: https://mohilisop.github.io/argis
+repo_url: https://github.com/Mohilisop/argis
+repo_name: Mohilisop/argis
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: cyan
+      accent: blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+    - scheme: default
+      primary: cyan
+      accent: blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Mohilisop/argis
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/argis/
+
+copyright: Copyright &copy; 2024 Mohilisop
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.emoji
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Installation: install.md
+  - Getting Started: getting-started.md
+  - Commands:
+    - scan: commands/scan.md
+    - recon: commands/recon.md
+    - domain: commands/domain.md
+    - myip: commands/myip.md
+    - discover: commands/discover.md
+    - history: commands/history.md
+    - monitor: commands/monitor.md
+    - search: commands/search.md
+    - stats: commands/stats.md
+    - compare: commands/compare.md
+    - wayback: commands/wayback.md
+    - categories: commands/categories.md
+  - Guides:
+    - Configuration: guides/configuration.md
+    - Output Formats: guides/output-formats.md
+    - Webhooks & Notifications: guides/webhooks.md
+    - Troubleshooting: guides/troubleshooting.md
+  - About:
+    - Changelog: changelog.md
+    - License: license.md

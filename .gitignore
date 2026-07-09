@@ -9,3 +9,5 @@ venv/
 *.csv
 *.md.export
 .env
+site/
+_mkdocs_site/
