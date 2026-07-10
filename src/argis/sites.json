@@ -115,8 +115,8 @@
   },
   "TikTok": {
     "url": "https://www.tiktok.com/@{}",
-    "error_type": "message",
-    "error_criteria": "Couldn't find this account",
+    "error_type": "status_code",
+    "error_criteria": 404,
     "category": "social"
   },
   "Snapchat": {
@@ -757,8 +757,8 @@
   },
   "edX": {
     "url": "https://profile.edx.org/u/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
+    "error_type": "message",
+    "error_criteria": "Learner Profile",
     "category": "learning"
   },
   "Khan Academy": {

@@ -36,15 +36,15 @@ def make_handler():
         if "status.example" in url:
             if "ghost" in url:
                 return httpx.Response(404)
-            return httpx.Response(200, text="profile page")
+            return httpx.Response(200, text="<title>realuser</title>")
         if "message.example" in url:
             if "ghost" in url:
                 return httpx.Response(200, text="Sorry, User not found here.")
-            return httpx.Response(200, text="profile page")
+            return httpx.Response(200, text="<title>realuser</title>")
         if "redirect.example" in url:
             if "ghost" in url:
                 return httpx.Response(200, text="gone", request=request)
-            return httpx.Response(200, text="profile page")
+            return httpx.Response(200, text="<title>realuser</title>")
         return httpx.Response(500)
 
     return handler

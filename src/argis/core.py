@@ -18,6 +18,8 @@ _CHALLENGE_MARKERS = (
     "making sure you're not a bot", "making sure you\u2019re not a bot",
     "enable javascript and cookies", "ddos-guard", "cf-browser-verification",
     "please verify you are a human", "__cf_chl",
+    "making sure you&#39;re not a bot", "&#39;re not a bot",
+    "please wait", "please stand by", "verify your browser",
 )
 
 _SOFT_404_TITLES = (
@@ -28,6 +30,7 @@ _SOFT_404_TITLES = (
     "get your very own", "create your", "welcome to",
     "learn to code", "the magic of the internet",
     "undefined", "whoops", "page isn't available",
+    "messenger", "my indeed",
 )
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
@@ -49,7 +52,10 @@ def _looks_generic(title: str, platform: str) -> bool:
     low = title.strip().lower()
     if not low:
         return True
-    if low in (platform.lower(), platform.lower() + " social"):
+    plat_low = platform.lower()
+    if low in (plat_low, plat_low + " social", plat_low + ".com"):
+        return True
+    if low.startswith(plat_low + " -") or low.startswith(plat_low + " \u2022"):
         return True
     return any(s in low for s in _SOFT_404_TITLES)
 
@@ -227,8 +233,8 @@ class ArgisEngine:
             from argis.correlate import clean_emails
             emails = clean_emails(_EMAIL_RE.findall(text))
             title_match = _TITLE_RE.search(response.text[:5000])
-            title = title_match.group(1).strip() if title_match else None
-            if title and _looks_generic(title, name):
+            title = title_match.group(1).strip() if title_match else ""
+            if not title or _looks_generic(title, name):
                 return {"status": "NOT_FOUND", "url": target_url}
             desc_match = _META_DESC_RE.search(response.text[:5000])
             description = desc_match.group(1).strip() if desc_match else None

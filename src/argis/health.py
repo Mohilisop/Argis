@@ -38,7 +38,6 @@ KNOWN_ACCOUNTS: dict[str, str] = {
     "Instagram": "instagram",
     "YouTube": "youtube",
     "Twitch": "twitch",
-    "TikTok": "tiktok",
     "SoundCloud": "soundcloud",
     "Steam": "gabelogannewell",
     "Chess.com": "hikaru",
