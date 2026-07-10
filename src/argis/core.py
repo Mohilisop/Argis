@@ -13,17 +13,21 @@ from argis.utils.display import console, make_progress, print_found
 from argis.utils.network import build_client, random_user_agent
 
 _CHALLENGE_MARKERS = (
-    "client challenge",
-    "checking your browser",
-    "attention required",
-    "verify you are human",
-    "just a moment...",
-    "captcha",
+    "client challenge", "checking your browser", "attention required",
+    "verify you are human", "just a moment...", "captcha",
+    "making sure you're not a bot", "making sure you\u2019re not a bot",
+    "enable javascript and cookies", "ddos-guard", "cf-browser-verification",
+    "please verify you are a human", "__cf_chl",
 )
 
-_SOFT_404_MARKERS = (
-    "not found", "sign up", "log in", "login", "undefined",
-    "page not found", "doesn't exist", "error 404",
+_SOFT_404_TITLES = (
+    "not found", "page not found", "user not found", "profile not found",
+    "doesn't exist", "doesn\u2019t exist", "error 404", "404", "general error",
+    "log in", "login", "sign up", "signup", "sign in", "join ",
+    "official site", "contact", "for web", " \u2022 log in",
+    "get your very own", "create your", "welcome to",
+    "learn to code", "the magic of the internet",
+    "undefined", "whoops", "page isn't available",
 )
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
@@ -32,6 +36,22 @@ _META_DESC_RE = re.compile(
     r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']*)["\']',
     re.IGNORECASE,
 )
+_STRIP_TAGS_RE = re.compile(r"<(script|style|noscript|template)\b[^>]*>.*?</\1>",
+                            re.I | re.S)
+
+
+def visible_html(html: str) -> str:
+    """Remove script/style/etc so extractors only see rendered content."""
+    return _STRIP_TAGS_RE.sub(" ", html)
+
+
+def _looks_generic(title: str, platform: str) -> bool:
+    low = title.strip().lower()
+    if not low:
+        return True
+    if low in (platform.lower(), platform.lower() + " social"):
+        return True
+    return any(s in low for s in _SOFT_404_TITLES)
 
 
 def _categorize_error(exc: BaseException) -> str:
@@ -185,6 +205,7 @@ class ArgisEngine:
         if any(marker in lowered_text for marker in _CHALLENGE_MARKERS):
             return {"status": "BLOCKED", "url": target_url}
 
+        text = visible_html(response.text)
         error_type = rules["error_type"]
         error_criteria = rules.get("error_criteria")
 
@@ -193,7 +214,7 @@ class ArgisEngine:
             if response.status_code == int(error_criteria):
                 not_found = True
         elif error_type == "message":
-            if error_criteria and error_criteria in response.text:
+            if error_criteria and error_criteria in text:
                 not_found = True
         elif error_type == "response_url":
             if error_criteria and str(response.url).rstrip("/") == error_criteria.rstrip("/"):
@@ -204,13 +225,11 @@ class ArgisEngine:
 
         if response.status_code == 200:
             from argis.correlate import clean_emails
-            emails = clean_emails(_EMAIL_RE.findall(response.text))
+            emails = clean_emails(_EMAIL_RE.findall(text))
             title_match = _TITLE_RE.search(response.text[:5000])
             title = title_match.group(1).strip() if title_match else None
-            if title:
-                low = title.lower()
-                if any(m in low for m in _SOFT_404_MARKERS):
-                    return {"status": "NOT_FOUND", "url": target_url}
+            if title and _looks_generic(title, name):
+                return {"status": "NOT_FOUND", "url": target_url}
             desc_match = _META_DESC_RE.search(response.text[:5000])
             description = desc_match.group(1).strip() if desc_match else None
             return {

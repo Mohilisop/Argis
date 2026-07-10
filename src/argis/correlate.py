@@ -56,6 +56,8 @@ _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 _LINK = re.compile(r'href=["\'](https?://[^"\']+)["\']', re.I)
 _EMAIL = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 _WORD = re.compile(r"[a-z0-9]+")
+_STRIP_TAGS_RE = re.compile(r"<(script|style|noscript|template)\b[^>]*>.*?</\1>",
+                            re.I | re.S)
 
 _STOP_DOMAINS = {
     "twitter.com", "x.com", "facebook.com", "instagram.com", "youtube.com",
@@ -68,6 +70,8 @@ _EMAIL_BLOCK_DOMAINS = {
     "automattic.com", "wordpress.com", "gravatar.com",
     "sentry-next.wixpress.com", "wixpress.com", "example.com",
     "domain.com", "email.com", "yourdomain.com",
+    "test.com", "testing.com", "gg.com", "techaro.lol",
+    "example.org",
 }
 _EMAIL_BLOCK_LOCAL = {
     "noreply", "no-reply", "donotreply", "support", "hello", "info",
@@ -82,6 +86,11 @@ _NOTFOUND_TITLES = {
     "sign up", "log in", "login", "undefined", "page isn't available",
     "this page isn't available", "error", "404", "whoops",
 }
+
+
+def visible_html(html: str) -> str:
+    """Remove script/style/etc so extractors only see rendered content."""
+    return _STRIP_TAGS_RE.sub(" ", html)
 
 
 def _valid_email(addr: str) -> bool:
@@ -195,6 +204,7 @@ async def _fetch_signals(
         return Signals(platform, url, error=res.error or "empty")
 
     html = res.text[:80000]
+    text = visible_html(html)
     sig = Signals(platform, url)
 
     from argis.extract import extract_labels, labels_to_dict
@@ -214,11 +224,11 @@ async def _fetch_signals(
     if d:
         sig.bio = d.group(1).strip()
 
-    for lm in _LINK.finditer(html):
+    for lm in _LINK.finditer(text):
         dom = _reg_domain(lm.group(1))
         if dom and dom not in _STOP_DOMAINS and dom != _reg_domain(url):
             sig.links.add(dom)
-    sig.emails = set(clean_emails(_EMAIL.findall(html)))
+    sig.emails = set(clean_emails(_EMAIL.findall(text)))
 
     if fetch_avatar:
         im = _OG_IMAGE.search(html)
