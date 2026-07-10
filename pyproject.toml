@@ -33,9 +33,19 @@ intel = [
 render = [
     "playwright>=1.44",
 ]
+pdf = [
+    "weasyprint>=61",
+]
+web = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
 all = [
     "pillow>=10.0",
     "playwright>=1.44",
+    "weasyprint>=61",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
 ]
 screenshots = [
     "playwright>=1.40.0",

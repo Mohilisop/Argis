@@ -74,6 +74,7 @@ class Signals:
     avatar_url: str = ""
     links: set[str] = field(default_factory=set)
     emails: set[str] = field(default_factory=set)
+    labels: dict | None = None
     error: str | None = None
 
 
@@ -139,6 +140,11 @@ async def _fetch_signals(
     html = res.text[:80000]
     sig = Signals(platform, url)
 
+    from argis.extract import extract_labels, labels_to_dict
+    raw_labels = extract_labels(platform, html)
+    if raw_labels:
+        sig.labels = labels_to_dict(raw_labels)
+
     name = ""
     m = _OG_TITLE.search(html) or _OG_SITE.search(html)
     if m:
@@ -157,13 +163,14 @@ async def _fetch_signals(
             sig.links.add(dom)
     sig.emails = set(_EMAIL.findall(html))
 
-    if fetch_avatar and _HAS_PIL:
+    if fetch_avatar:
         im = _OG_IMAGE.search(html)
         if im:
             sig.avatar_url = im.group(1)
-            data = await fetcher.get_bytes(sig.avatar_url)
-            if data:
-                sig.avatar_hash = _dhash(data)
+            if _HAS_PIL:
+                data = await fetcher.get_bytes(sig.avatar_url)
+                if data:
+                    sig.avatar_hash = _dhash(data)
     return sig
 
 

@@ -245,6 +245,10 @@ def scan(
         None, "--dossier",
         help="Build a full HTML dossier (found accounts + extracted identity) at this path."
     ),
+    pdf: Optional[Path] = typer.Option(
+        None, "--pdf",
+        help="Export a PDF dossier at this path (needs weasyprint or playwright)."
+    ),
 ):
     """Search for a target username across all configured platforms.
 
@@ -378,12 +382,10 @@ def scan(
 
     _handle_scan_export(results, username, export, output)
 
-    if dossier:
-        from argis.dossier import build_dossier, print_dossier, to_html_report, build_dossier_graph
-        dossier_path = dossier.resolve()
-        if dossier_path.suffix != ".html":
-            dossier_path = dossier_path / f"{username}-dossier.html"
-        dossier_path.parent.mkdir(parents=True, exist_ok=True)
+    dsr = None
+    graph_payload = None
+    if dossier or pdf:
+        from argis.dossier import build_dossier, build_dossier_graph
         cats = {name: rules.get("category", "uncategorized")
                 for name, rules in engine.sites.items()}
         dsr = asyncio.run(build_dossier(
@@ -393,10 +395,28 @@ def scan(
         graph_payload = asyncio.run(build_dossier_graph(
             username, timeout=timeout or 7.0, concurrency=concurrency or 30,
             proxy=proxy, use_tor=tor))
+
+    if dossier:
+        from argis.dossier import print_dossier, to_html_report
+        dossier_path = dossier.resolve()
+        if dossier_path.suffix != ".html":
+            dossier_path = dossier_path / f"{username}-dossier.html"
+        dossier_path.parent.mkdir(parents=True, exist_ok=True)
         print_dossier(dsr, console)
         dossier_path.write_text(to_html_report(dsr, graph_payload=graph_payload),
                                 encoding="utf-8")
         console.print(f"[green]Full dossier written \u2192 [underline]{dossier_path.resolve()}[/underline][/green]")
+
+    if pdf:
+        from argis.dossier import to_pdf
+        pdf_path = pdf.resolve()
+        if pdf_path.suffix != ".pdf":
+            pdf_path = pdf_path / f"{username}-dossier.pdf"
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        if to_pdf(dsr, pdf_path, graph_payload=graph_payload):
+            console.print(f"[green]PDF dossier \u2192 [underline]{pdf_path.resolve()}[/underline][/green]")
+        else:
+            console.print("[yellow]PDF needs weasyprint or playwright. Install: pip install \"argis[pdf]\".[/yellow]")
 
     screenshot_data: dict[str, bytes] = {}
     if screenshots:
@@ -676,6 +696,22 @@ def scan_face(
                 console.print(f"  [dim]Crop saved: {crop_path}[/dim]")
                 console.print(f"  [dim]Open: {engine_url}[/dim]")
                 webbrowser.open(engine_url)
+
+
+@app.command(rich_help_panel="Username Scanning")
+def web(
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address."),
+    port: int = typer.Option(8000, "--port", help="Listen port."),
+):
+    """Launch the local Argis web UI (Maigret-style browser mode)."""
+    try:
+        import uvicorn
+    except Exception:
+        console.print("[yellow]Web UI needs: pip install \"argis[web]\".[/yellow]")
+        raise typer.Exit(1)
+    from argis.web import create_app
+    console.print(f"[green]Argis web UI \u2192 http://{host}:{port}[/green]")
+    uvicorn.run(create_app(), host=host, port=port)
 
 
 def _show_platform_list(engine: ArgisEngine, categories: tuple | None) -> None:

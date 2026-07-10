@@ -27,6 +27,7 @@ class Account:
     avatar_url: str = ""
     emails: list[str] = field(default_factory=list)
     links: list[str] = field(default_factory=list)
+    labels: dict | None = None
 
 
 @dataclass
@@ -106,6 +107,7 @@ async def build_dossier(
                     avatar_url=getattr(s, "avatar_url", "") or "",
                     emails=list(getattr(s, "emails", []) or []),
                     links=sorted(getattr(s, "links", set()) or set()),
+                    labels=getattr(s, "labels", None) or None,
                 )
             accounts = list(await asyncio.gather(
                 *(one(p, i) for p, i in found.items())))
@@ -486,6 +488,39 @@ function render(){{const term=q.value.trim().toLowerCase(); let vis=0;
 q.addEventListener("input",render); sync();
 </script>
 </body></html>"""
+
+
+def to_pdf(dossier: Dossier, out_path: str | Path, *, graph_payload: dict | None = None) -> bool:
+    """Render the dossier HTML to PDF. Returns True on success.
+
+    Tries weasyprint (pure-python, best fidelity), then
+    playwright (if the render extra is installed). No hard dependency added.
+    """
+    html_str = to_html_report(dossier, graph_payload=graph_payload)
+
+    try:
+        from weasyprint import HTML
+        HTML(string=html_str).write_pdf(str(out_path))
+        return True
+    except Exception:
+        pass
+
+    try:
+        import asyncio
+        from playwright.async_api import async_playwright
+
+        async def _run():
+            async with async_playwright() as pw:
+                b = await pw.chromium.launch(headless=True)
+                pg = await b.new_page()
+                await pg.set_content(html_str, wait_until="networkidle")
+                await pg.pdf(path=str(out_path), format="A4",
+                             print_background=True)
+                await b.close()
+        asyncio.run(_run())
+        return True
+    except Exception:
+        return False
 
 
 async def build_dossier_graph(username: str, *, timeout=12.0, concurrency=15,
