@@ -21,6 +21,11 @@ _CHALLENGE_MARKERS = (
     "captcha",
 )
 
+_SOFT_404_MARKERS = (
+    "not found", "sign up", "log in", "login", "undefined",
+    "page not found", "doesn't exist", "error 404",
+)
+
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 _META_DESC_RE = re.compile(
@@ -198,9 +203,14 @@ class ArgisEngine:
             return {"status": "NOT_FOUND", "url": target_url}
 
         if response.status_code == 200:
-            emails = _EMAIL_RE.findall(response.text)
+            from argis.correlate import clean_emails
+            emails = clean_emails(_EMAIL_RE.findall(response.text))
             title_match = _TITLE_RE.search(response.text[:5000])
             title = title_match.group(1).strip() if title_match else None
+            if title:
+                low = title.lower()
+                if any(m in low for m in _SOFT_404_MARKERS):
+                    return {"status": "NOT_FOUND", "url": target_url}
             desc_match = _META_DESC_RE.search(response.text[:5000])
             description = desc_match.group(1).strip() if desc_match else None
             return {
@@ -208,7 +218,7 @@ class ArgisEngine:
                 "url": target_url,
                 "title": title,
                 "description": description,
-                "emails": list(set(emails)) if emails else [],
+                "emails": emails,
             }
 
         return {"status": "UNKNOWN", "url": target_url, "error": f"HTTP_{response.status_code}"}

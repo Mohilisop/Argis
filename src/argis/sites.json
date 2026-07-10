@@ -43,8 +43,8 @@
   },
   "Replit": {
     "url": "https://replit.com/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
+    "error_type": "message",
+    "error_criteria": "Sign Up",
     "category": "coding"
   },
   "CodePen": {
@@ -241,8 +241,8 @@
   },
   "Hashnode": {
     "url": "https://hashnode.com/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
+    "error_type": "message",
+    "error_criteria": "User not found",
     "category": "blogging"
   },
   "Substack": {
@@ -715,8 +715,8 @@
   },
   "GeeksforGeeks": {
     "url": "https://auth.geeksforgeeks.org/user/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
+    "error_type": "message",
+    "error_criteria": "undefined",
     "category": "coding"
   },
   "Coderwall": {
@@ -733,8 +733,8 @@
   },
   "Codecademy": {
     "url": "https://www.codecademy.com/profiles/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
+    "error_type": "message",
+    "error_criteria": "Profile Not Found",
     "category": "coding"
   },
   "Pluralsight": {
