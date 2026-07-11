@@ -1,8 +1,7 @@
 """Argis Dossier Generator.
 
-Builds comprehensive intelligence reports from scan results.
-Key improvement: intelligent filtering to prevent garbage data
-(page titles as names, corporate emails, CDN domains) from polluting reports.
+Generates comprehensive intelligence reports from normalized ProfileEvidence.
+Only renders data — normalization, verification, and enrichment happen upstream.
 """
 from __future__ import annotations
 
@@ -10,50 +9,34 @@ import html
 import json
 import re
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
+from argis.normalize import (
+    normalize_scan_results,
+    profiles_to_dossier_dicts,
+    CORPORATE_EMAIL_DOMAINS,
+)
+
 
 # ═══════════════════════════════════════════════════════════════════
-#  INTELLIGENCE FILTERS — prevent garbage from reaching the report
+#  INTELLIGENCE FILTERS
 # ═══════════════════════════════════════════════════════════════════
 
-# Corporate/service email domains to EXCLUDE from identity extraction
-CORPORATE_EMAIL_DOMAINS = {
-    "waze.com", "google.com", "facebook.com", "meta.com", "apple.com",
-    "microsoft.com", "amazon.com", "twitter.com", "x.com", "github.com",
-    "gitlab.com", "cloudflare.com", "fastly.com", "akamai.com",
-    "doubleclick.net", "googlesyndication.com", "googleadservices.com",
-    "gstatic.com", "googleapis.com", "youtube.com", "spotify.com",
-    "discord.com", "twitch.tv", "reddit.com", "imgur.com", "tumblr.com",
-    "wordpress.com", "automattic.com", "squarespace.com", "wix.com",
-    "shopify.com", "stripe.com", "paypal.com", "coinbase.com",
-    "binance.com", "kraken.com", "adobe.com", "canva.com", "figma.com",
-    "notion.so", "slack.com", "zoom.us", "atlassian.com", "jira.com",
-    "trello.com", "asana.com", "clickup.com", "linear.app",
-    "sentry.io", "datadog.com", "newrelic.com", "pagerduty.com",
-    "intercom.io", "zendesk.com", "hubspot.com", "salesforce.com",
-    "mailchimp.com", "sendgrid.net", "twilio.com", "netlify.com",
-    "vercel.com", "heroku.com", "digitalocean.com", "aws.amazon.com",
-    "noreply.github.com",
-}
-
-# Patterns that indicate a "name" is actually a page title / site description
 GARBAGE_NAME_PATTERNS = [
-    r"(?i)^(the |a |an )",  # articles at start
+    r"(?i)^(the |a |an )",
     r"(?i)\b(platform|challenges?|programming|community|blog|official|invite|website)\b",
     r"(?i)\b(sign up|log in|join|profile|view|welcome to|powered by)\b",
     r"(?i)\b(top |best |free |online |your )\b",
-    r"\.\.\.",  # truncated titles
+    r"\.\.\.",
     r"(?i)^(home|index|about|error|404|not found)",
     r"(?i)(technology|talent|company|service|solution)s?\b",
-    r"&(amp|apos|quot|lt|gt);",  # HTML entities = scraped title
+    r"&(amp|apos|quot|lt|gt);",
     r"(?i)\b(cookie|privacy|terms|copyright)\b",
 ]
 
-# CDN / analytics / tracking domains to exclude from extracted links
 GARBAGE_LINK_DOMAINS = {
     "cloudflare.com", "cloudflareinsights.com", "cloudfront.net",
     "googleapis.com", "gstatic.com", "google-analytics.com",
@@ -67,139 +50,149 @@ GARBAGE_LINK_DOMAINS = {
     "segment.com", "intercom.io", "intercomcdn.com", "crisp.chat",
     "zendesk.com", "zdassets.com", "hcaptcha.com", "recaptcha.net",
     "googlerecaptcha.com", "coinzilla.com", "coinzilla.io",
-    "coingecko.com", "bizible.com", "beaconscan.com", "blockscan.com",
-    "etherscan.io", "bscscan.com", "polygonscan.com",
+    "coingecko.com", "bizible.com", "ethers can.io", "bscscan.com",
     "w3.org", "schema.org", "ogp.me", "opengraphprotocol.org",
-    "archive.org",  # Wayback Machine, not a personal link
+    "archive.org",
+}
+
+_CAT_COLORS = {
+    "development": "#4ecdc4", "social": "#c77dff", "gaming": "#ffd166",
+    "forums": "#9b5de5", "art": "#ff6b9d", "music": "#a78bfa",
+    "tools": "#64b5f6", "hobby": "#ffd166", "blogging": "#4ade80",
+    "finance": "#4ade80", "shopping": "#ff8a65", "education": "#a5d6a7",
+    "professional": "#9b5de5", "entertainment": "#ef5350",
+    "security": "#ffb74d", "video": "#ef5350", "content": "#c77dff",
+    "messaging": "#64b5f6", "travel": "#4dd0e1", "crypto": "#ffd54f",
+    "geo": "#66bb6a", "fitness": "#81c784", "photography": "#ffab40",
+    "wiki": "#90a4ae", "freelance": "#4ade80", "maker": "#ff8a65",
+    "uncategorized": "#6a6a80",
+}
+
+_RISK_COLORS = {
+    "CRITICAL": "#ef5350", "HIGH": "#ffa726",
+    "MEDIUM": "#ffd54f", "LOW": "#4ade80",
 }
 
 
 def is_valid_name(name: str, username: str) -> bool:
-    """Check if an extracted name is a real display name, not a page title."""
     if not name or len(name) < 2:
         return False
-    if len(name) > 40:  # Real names are short
+    if len(name) > 40:
         return False
     if name.lower() == username.lower():
-        return False  # Same as username, not useful
-    # Check garbage patterns
-    for pattern in GARBAGE_NAME_PATTERNS:
-        if re.search(pattern, name):
+        return False
+    for pat in GARBAGE_NAME_PATTERNS:
+        if re.search(pat, name):
             return False
-    # Real names usually have 1-4 words
     words = name.split()
     if len(words) > 5:
         return False
-    # Must have at least one capitalized word (names are capitalized)
     if not any(w[0].isupper() for w in words if w):
         return False
     return True
 
 
+_IMAGE_EXT_TLDS = {"png", "jpg", "jpeg", "gif", "svg", "webp", "avif", "ico",
+                    "bmp", "tiff", "tif"}
+
+
 def is_valid_email(email: str, username: str) -> bool:
-    """Check if an extracted email likely belongs to the target user."""
     if not email or "@" not in email:
         return False
     local, domain = email.rsplit("@", 1)
     domain = domain.lower()
-    # Reject known corporate domains
     if domain in CORPORATE_EMAIL_DOMAINS:
         return False
-    # Reject noreply / system emails
+    tld = domain.rsplit(".", 1)[-1] if "." in domain else ""
+    if tld in _IMAGE_EXT_TLDS:
+        return False
     if any(x in local.lower() for x in ["noreply", "no-reply", "support", "admin",
                                           "info@", "help", "billing", "sales",
                                           "marketing", "team", "contact",
                                           "feedback", "abuse", "postmaster",
                                           "webmaster", "security", "privacy",
                                           "legal", "compliance", "hr@",
-                                          "careers", "jobs", "press",
-                                          "ads_", "bizdev", "partnership",
-                                          "inquiry", "contract", "moca-",
-                                          "closures", "ccp@"]):
+                                          "careers", "jobs", "press"]):
         return False
-    # Bonus: matches username = very likely theirs
-    # But don't require it (people use different email handles)
     return True
 
 
 def is_valid_link(domain: str, username: str, found_platforms: set) -> bool:
-    """Check if an extracted link domain is relevant to the target."""
     domain = domain.lower().strip(".")
     if not domain:
         return False
     if domain in GARBAGE_LINK_DOMAINS:
         return False
-    # Remove www prefix for comparison
     clean = domain.removeprefix("www.")
     if clean in GARBAGE_LINK_DOMAINS:
         return False
-    # Skip if it's already a known found platform URL
-    # (redundant with the accounts list)
     return True
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  RISK SCORING ENGINE
+#  RISK SCORING
 # ═══════════════════════════════════════════════════════════════════
 
 def calculate_risk_score(results: list[dict], identity: dict) -> dict:
-    """Calculate overall exposure risk score."""
+    """Evidence-based risk scoring. Uses only verified/probable accounts."""
     score = 0
     factors = []
 
-    # Account count
-    n_accounts = len(results)
-    if n_accounts >= 30:
-        score += 25
-        factors.append(f"{n_accounts} accounts found (very high exposure)")
-    elif n_accounts >= 15:
-        score += 15
-        factors.append(f"{n_accounts} accounts found (high exposure)")
-    elif n_accounts >= 5:
-        score += 8
-        factors.append(f"{n_accounts} accounts found (moderate exposure)")
+    verified = [r for r in results if r.get("verification", "") in ("VERIFIED", "PROBABLE")]
+    n_verified = len(verified)
 
-    # Email exposure
+    if n_verified >= 30:
+        score += 25
+        factors.append(f"{n_verified} verified accounts (very high exposure)")
+    elif n_verified >= 15:
+        score += 15
+        factors.append(f"{n_verified} verified accounts (high exposure)")
+    elif n_verified >= 5:
+        score += 8
+        factors.append(f"{n_verified} verified accounts (moderate exposure)")
+
     n_emails = len(identity.get("emails", []))
     if n_emails >= 3:
         score += 20
-        factors.append(f"{n_emails} emails publicly visible")
+        factors.append(f"{n_emails} personal emails exposed")
     elif n_emails >= 1:
         score += 10
-        factors.append(f"{n_emails} email(s) publicly visible")
+        factors.append(f"{n_emails} personal email(s) exposed")
 
-    # Real name exposure
     names = identity.get("names", [])
     if names:
         score += 15
         factors.append(f"Real name exposed on {len(names)} platform(s)")
 
-    # Category spread (more categories = more attack surface)
-    categories = set(r.get("cat", "") for r in results)
+    categories = set(r.get("cat", "") for r in verified)
     if len(categories) >= 8:
         score += 15
         factors.append(f"Active across {len(categories)} different categories")
     elif len(categories) >= 4:
         score += 8
 
-    # Finance-related accounts
-    finance_accounts = [r for r in results if r.get("cat") in ("finance", "crypto")]
+    finance_accounts = [r for r in verified if r.get("cat") in ("finance", "crypto")]
     if finance_accounts:
         score += 10
         factors.append(f"{len(finance_accounts)} financial platform(s) exposed")
 
-    # Avatar reuse (makes correlation trivial)
-    avatar_hashes = [r.get("avatar_hash") for r in results if r.get("avatar_hash")]
+    avatar_hashes = [r.get("avatar_hash") for r in verified if r.get("avatar_hash")]
     hash_counts = Counter(avatar_hashes)
     reused = sum(1 for c in hash_counts.values() if c > 1)
     if reused:
         score += 15
         factors.append(f"Same avatar reused across {reused} platform groups")
 
-    # Clamp to 0-100
+    # Hard consistency rule: 30+ verified cannot be LOW
+    if n_verified >= 30 and score < 40:
+        score = 40
+    # 3+ strong correlations cannot be LOW
+    n_correlations = len(identity.get("correlations", []))
+    if n_correlations >= 3 and score < 40:
+        score = 40
+
     score = min(100, max(0, score))
 
-    # Rating
     if score >= 70:
         rating = "CRITICAL"
     elif score >= 50:
@@ -213,11 +206,11 @@ def calculate_risk_score(results: list[dict], identity: dict) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  IDENTITY EXTRACTION (with filtering)
+#  IDENTITY EXTRACTION
 # ═══════════════════════════════════════════════════════════════════
 
 def extract_identity(results: list[dict], username: str) -> dict:
-    """Extract and deduplicate identity info with garbage filtering."""
+    """Extract and deduplicate identity info from normalized dossier dicts."""
     names = set()
     emails = set()
     links = set()
@@ -230,31 +223,25 @@ def extract_identity(results: list[dict], username: str) -> dict:
         platform = r.get("p", "")
         found_platforms.add(platform.lower())
 
-        # Names
         name = r.get("name", "").strip()
         if is_valid_name(name, username):
             names.add(name)
 
-        # Emails
         raw_mail = r.get("mail", "")
         if raw_mail:
             for email in re.findall(r"[\w.+-]+@[\w-]+\.[\w.-]+", raw_mail):
                 if is_valid_email(email, username):
                     emails.add(email.lower())
 
-        # Bio
         bio = r.get("bio", "").strip()
         if bio and len(bio) > 10 and len(bio) < 500:
-            # Skip if it's a generic site description
             if not re.search(r"(?i)(is a (platform|website|service|community)|sign up|join (for )?free)", bio):
                 bios.append({"platform": platform, "text": bio})
 
-        # Avatars
         img = r.get("img", "").strip()
         if img and not any(x in img.lower() for x in ["default", "placeholder", "avatar_default", "1x1", "pixel"]):
             avatars.append({"platform": platform, "url": img, "hash": r.get("avatar_hash", "")})
 
-        # Links from profile
         for link in r.get("links", []):
             try:
                 domain = urlparse(link if "://" in link else f"https://{link}").netloc
@@ -267,7 +254,7 @@ def extract_identity(results: list[dict], username: str) -> dict:
     return {
         "names": sorted(names),
         "emails": sorted(emails),
-        "links": sorted(links)[:20],  # Cap at 20 most relevant
+        "links": sorted(links)[:20],
         "bios": bios[:10],
         "avatars": avatars,
     }
@@ -281,7 +268,7 @@ def find_correlations(results: list[dict], identity: dict) -> list[dict]:
     """Find cross-platform links and correlations."""
     correlations = []
 
-    # Shared emails across platforms
+    # Shared emails
     email_platforms = defaultdict(list)
     for r in results:
         raw_mail = r.get("mail", "")
@@ -314,10 +301,10 @@ def find_correlations(results: list[dict], identity: dict) -> list[dict]:
                 "value": h[:12],
                 "platforms": platforms,
                 "strength": "strong",
-                "desc": f"Identical avatar image on {len(platforms)} platforms",
+                "desc": f"Identical avatar on {len(platforms)} platforms",
             })
 
-    # Same display name across platforms
+    # Same display name
     name_platforms = defaultdict(list)
     for r in results:
         name = r.get("name", "").strip()
@@ -334,6 +321,7 @@ def find_correlations(results: list[dict], identity: dict) -> list[dict]:
                 "desc": f"Same display name on {len(platforms)} platforms",
             })
 
+    identity["correlations"] = correlations
     return correlations
 
 
@@ -342,94 +330,109 @@ def find_correlations(results: list[dict], identity: dict) -> list[dict]:
 # ═══════════════════════════════════════════════════════════════════
 
 def generate_dossier_html(results: list[dict], username: str) -> str:
-    """Generate the full dossier HTML report."""
-    identity = extract_identity(results, username)
-    risk = calculate_risk_score(results, identity)
-    correlations = find_correlations(results, identity)
+    """Generate the full dossier HTML report.
 
-    # Category distribution
-    cat_counts = Counter(r.get("cat", "uncategorized") for r in results)
-    n_accounts = len(results)
+    Expects results as a list of normalized dicts with keys:
+      p, cat, url, name, mail, bio, img, avatar_hash, links,
+      status, confidence, verification, warnings
+    """
+    # Phase the accounts by verification state
+    verified = [r for r in results if r.get("verification") in ("VERIFIED", "PROBABLE")]
+    ambiguous = [r for r in results if r.get("verification") == "AMBIGUOUS"]
+    rejected = [r for r in results if r.get("verification") in ("NOT_FOUND", "ERROR")]
+
+    identity = extract_identity(verified, username)
+    correlations = find_correlations(results, identity)
+    risk = calculate_risk_score(results, identity)
+
+    cat_counts = Counter(r.get("cat", "uncategorized") for r in verified)
+    n_verified = len(verified)
+    n_ambiguous = len(ambiguous)
+    n_rejected = len(rejected)
     n_categories = len(cat_counts)
     n_avatars = len(identity["avatars"])
     n_emails = len(identity["emails"])
     n_names = len(identity["names"])
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     esc = html.escape
+    data_json = json.dumps(verified, ensure_ascii=False, default=str)
+    risk_color = _RISK_COLORS.get(risk["rating"], "#4ade80")
 
-    # Build DATA JSON for JS rendering
-    data_json = json.dumps(results, ensure_ascii=False, default=str)
-
-    # Category colors
-    cat_colors = {
-        "development": "#4ecdc4", "social": "#c77dff", "gaming": "#ffd166",
-        "forums": "#9b5de5", "art": "#ff6b9d", "music": "#a78bfa",
-        "tools": "#64b5f6", "hobby": "#ffd166", "blogging": "#4ade80",
-        "finance": "#4ade80", "shopping": "#ff8a65", "education": "#a5d6a7",
-        "professional": "#9b5de5", "entertainment": "#ef5350",
-        "security": "#ffb74d", "video": "#ef5350", "content": "#c77dff",
-        "messaging": "#64b5f6", "travel": "#4dd0e1", "crypto": "#ffd54f",
-        "geo": "#66bb6a", "fitness": "#81c784", "photography": "#ffab40",
-        "wiki": "#90a4ae", "freelance": "#4ade80", "maker": "#ff8a65",
-    }
-
-    # Risk color
-    risk_colors = {
-        "CRITICAL": "#ef5350", "HIGH": "#ffa726",
-        "MEDIUM": "#ffd54f", "LOW": "#4ade80",
-    }
-    risk_color = risk_colors.get(risk["rating"], "#4ade80")
-
-    # Build distribution bars
+    # Category distribution bars
     dist_html = ""
     max_count = max(cat_counts.values()) if cat_counts else 1
     for cat, count in sorted(cat_counts.items(), key=lambda x: -x[1]):
         bar_len = int((count / max_count) * 28)
         bar = "\u2588" * bar_len
-        color = cat_colors.get(cat, "#64b5f6")
-        dist_html += f'<div class="drow" style="--cc:{color}"><span class="lbl">{esc(cat)}</span><span class="bar">{bar}</span><span class="n">{count}</span></div>\n'
+        color = _CAT_COLORS.get(cat, "#64b5f6")
+        dist_html += (
+            f'<div class="drow" style="--cc:{color}">'
+            f'<span class="lbl">{esc(cat)}</span>'
+            f'<span class="bar">{bar}</span>'
+            f'<span class="n">{count}</span></div>\n'
+        )
 
-    # Build identity section
-    names_html = ""
-    if identity["names"]:
-        names_html = "".join(f'<span class="tok name">{esc(n)}</span>' for n in identity["names"])
-    else:
-        names_html = '<span class="none">no display names extracted</span>'
+    # Identity section
+    names_html = "".join(
+        f'<span class="tok name">{esc(n)}</span>' for n in identity["names"]
+    ) or '<span class="none name">not established</span>'
 
-    emails_html = ""
-    if identity["emails"]:
-        emails_html = "".join(f'<span class="tok mail">{esc(e)}</span>' for e in identity["emails"])
-    else:
-        emails_html = '<span class="none">no personal emails found</span>'
+    emails_html = "".join(
+        f'<span class="tok mail">{esc(e)}</span>' for e in identity["emails"]
+    ) or '<span class="none">no personal emails found</span>'
 
-    links_html = ""
-    if identity["links"]:
-        links_html = "".join(f'<span class="tok link">{esc(l)}</span>' for l in identity["links"])
-    else:
-        links_html = '<span class="none">no external links found</span>'
+    links_html = "".join(
+        f'<span class="tok link">{esc(l)}</span>' for l in identity["links"]
+    ) or '<span class="none">no external links found</span>'
 
-    # Build bios section
+    # Bios
     bios_html = ""
     if identity["bios"]:
         for b in identity["bios"][:5]:
-            bios_html += f'<div class="bio-item"><span class="bio-src">{esc(b["platform"])}</span><span class="bio-text">{esc(b["text"][:200])}</span></div>\n'
+            bios_html += (
+                f'<div class="bio-item">'
+                f'<span class="bio-src">{esc(b["platform"])}</span>'
+                f'<span class="bio-text">{esc(b["text"][:200])}</span></div>\n'
+            )
 
-    # Build correlations section
+    # Correlations
     corr_html = ""
     if correlations:
         for c in correlations:
             platforms_str = ", ".join(c["platforms"][:5])
-            strength_class = c["strength"]
-            corr_html += f'<div class="corr-item {strength_class}"><span class="corr-type">{esc(c["type"].replace("_", " "))}</span><span class="corr-val">{esc(c["value"])}</span><span class="corr-plats">{esc(platforms_str)}</span></div>\n'
+            corr_html += (
+                f'<div class="corr-item {c["strength"]}">'
+                f'<span class="corr-type">{esc(c["type"].replace("_", " "))}</span>'
+                f'<span class="corr-val">{esc(c["value"])}</span>'
+                f'<span class="corr-plats">{esc(platforms_str)}</span></div>\n'
+            )
     else:
         corr_html = '<div class="none">no cross-platform correlations detected</div>'
 
-    # Build risk factors
-    risk_factors_html = ""
-    for f in risk["factors"]:
-        risk_factors_html += f'<li>{esc(f)}</li>'
+    # Risk factors
+    risk_factors_html = "".join(f"<li>{esc(f)}</li>" for f in risk["factors"])
 
+    # Ambiguous account rows (collapsible)
+    amb_html = ""
+    if ambiguous:
+        for r in ambiguous:
+            pfp = _pfp_html(r)
+            meta = r.get("bio", "") or r.get("url", "")
+            warnings_str = "; ".join(r.get("warnings", []))
+            amb_html += (
+                f'<div class="row" data-search="{esc((r.get("p","")+" "+meta).lower())}">'
+                f'<a href="{esc(r.get("url",""))}" target="_blank" rel="noopener">'
+                f"{pfp}"
+                f'<div class="row-info">'
+                f'<div class="row-plat">{esc(r.get("p",""))}</div>'
+                f'<div class="row-meta">{esc(meta[:80])}</div>'
+                f'</div>'
+                f'<span class="row-go warned" title="{esc(warnings_str)}">\u26a0</span>'
+                f"</a></div>\n"
+            )
+
+    # Verified accounts render in JS
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -461,7 +464,6 @@ def generate_dossier_html(results: list[dict], username: str) -> str:
   --font-sans: 'Inter', system-ui, sans-serif;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }}
-
 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 html {{ font-size: 14px; }}
 body {{
@@ -471,10 +473,8 @@ body {{
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }}
-
 ::selection {{ background: var(--green); color: var(--bg); }}
 a {{ color: inherit; text-decoration: none; }}
-
 .wrap {{ max-width: 1100px; margin: 0 auto; padding: 0 24px; }}
 
 /* Header */
@@ -482,7 +482,6 @@ a {{ color: inherit; text-decoration: none; }}
   padding: 48px 0 32px;
   border-bottom: 1px solid var(--border);
 }}
-
 .header-top {{
   display: flex;
   justify-content: space-between;
@@ -491,7 +490,6 @@ a {{ color: inherit; text-decoration: none; }}
   flex-wrap: wrap;
   margin-bottom: 24px;
 }}
-
 .brand {{
   font-size: 11px;
   color: var(--green);
@@ -499,27 +497,19 @@ a {{ color: inherit; text-decoration: none; }}
   text-transform: uppercase;
   font-weight: 700;
 }}
-
 .meta-info {{
   text-align: right;
   font-size: 11px;
   color: var(--text-dim);
 }}
-
 .target {{
   font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--text-hi);
 }}
-
 .target .at {{ color: var(--green); }}
-
-.subtitle {{
-  color: var(--text-dim);
-  font-size: 12px;
-  margin-top: 8px;
-}}
+.subtitle {{ color: var(--text-dim); font-size: 12px; margin-top: 8px; }}
 
 /* Risk Banner */
 .risk-banner {{
@@ -532,52 +522,18 @@ a {{ color: inherit; text-decoration: none; }}
   gap: 20px;
   align-items: center;
 }}
-
 .risk-score {{
   font-size: 2.5rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }}
-
-.risk-details {{
-  font-size: 12px;
-}}
-
-.risk-rating {{
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
-}}
-
-.risk-factors {{
-  color: var(--text-dim);
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-}}
-
-.risk-factors li::before {{
-  content: "\2022 ";
-  color: var(--text-muted);
-}}
-
-.risk-meter {{
-  width: 120px;
-  height: 6px;
-  background: var(--bg-3);
-  border-radius: 3px;
-  overflow: hidden;
-  position: relative;
-}}
-
-.risk-meter-fill {{
-  height: 100%;
-  border-radius: 3px;
-  transition: width 1s var(--ease);
-}}
+.risk-details {{ font-size: 12px; }}
+.risk-rating {{ font-weight: 700; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 4px; }}
+.risk-factors {{ color: var(--text-dim); list-style: none; display: flex; flex-wrap: wrap; gap: 4px 16px; }}
+.risk-factors li::before {{ content: "\\2022 "; color: var(--text-muted); }}
+.risk-meter {{ width: 120px; height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }}
+.risk-meter-fill {{ height: 100%; border-radius: 3px; transition: width 1s var(--ease); }}
 
 /* Stats Strip */
 .stats {{
@@ -588,41 +544,14 @@ a {{ color: inherit; text-decoration: none; }}
   border: 1px solid var(--border);
   margin: 24px 0;
 }}
-
-.stat {{
-  background: var(--bg-2);
-  padding: 16px 20px;
-}}
-
-.stat-label {{
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}}
-
-.stat-value {{
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin-top: 4px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}}
-
-.stat-sub {{
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-top: 6px;
-}}
+.stat {{ background: var(--bg-2); padding: 16px 20px; }}
+.stat-label {{ font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; }}
+.stat-value {{ font-size: 1.75rem; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; line-height: 1; }}
+.stat-sub {{ font-size: 11px; color: var(--text-dim); margin-top: 6px; }}
 
 /* Sections */
-.section {{
-  padding: 40px 0;
-  border-bottom: 1px solid var(--border);
-}}
-
+.section {{ padding: 40px 0; border-bottom: 1px solid var(--border); }}
 .section:last-child {{ border-bottom: none; }}
-
 .sec-title {{
   font-size: 11px;
   color: var(--green);
@@ -633,13 +562,21 @@ a {{ color: inherit; text-decoration: none; }}
   align-items: center;
   gap: 12px;
 }}
+.sec-title::after {{ content: ""; flex: 1; height: 1px; background: var(--border); }}
 
-.sec-title::after {{
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
+/* Evidence Quality Summary */
+.eq-grid {{ display: grid; gap: 8px; }}
+.eq-row {{
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  align-items: center;
+  font-size: 12px;
 }}
+.eq-label {{ color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }}
+.eq-bar-bg {{ height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }}
+.eq-bar {{ height: 100%; border-radius: 3px; }}
 
 /* Distribution */
 .dist {{ display: grid; gap: 6px; max-width: 700px; }}
@@ -650,42 +587,14 @@ a {{ color: inherit; text-decoration: none; }}
   align-items: center;
   padding: 4px 0;
 }}
-.drow .lbl {{
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--cc);
-}}
-.drow .bar {{
-  color: var(--cc);
-  font-size: 11px;
-  letter-spacing: -1px;
-  overflow: hidden;
-  opacity: 0.7;
-}}
-.drow .n {{
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-hi);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}}
+.drow .lbl {{ font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cc); }}
+.drow .bar {{ color: var(--cc); font-size: 11px; letter-spacing: -1px; overflow: hidden; opacity: 0.7; }}
+.drow .n {{ font-size: 12px; font-weight: 700; color: var(--text-hi); text-align: right; font-variant-numeric: tabular-nums; }}
 
 /* Identity */
 .idgrid {{ display: grid; gap: 16px; }}
-.idrow {{
-  display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: 16px;
-  align-items: start;
-}}
-.idrow .tag {{
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding-top: 6px;
-}}
+.idrow {{ display: grid; grid-template-columns: 80px 1fr; gap: 16px; align-items: start; }}
+.idrow .tag {{ font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; padding-top: 6px; }}
 .idrow .vals {{ display: flex; flex-wrap: wrap; gap: 6px; }}
 .tok {{
   padding: 4px 10px;
@@ -698,10 +607,11 @@ a {{ color: inherit; text-decoration: none; }}
 .tok:hover {{ border-color: var(--border-hot); }}
 .tok.name {{ color: var(--green); border-color: rgba(74, 222, 128, 0.3); }}
 .tok.mail {{ color: var(--amber); }}
-.tok.mail::before {{ content: "\2709 "; color: var(--text-muted); }}
+.tok.mail::before {{ content: "\\2709 "; color: var(--text-muted); }}
 .tok.link {{ color: var(--cyan); }}
-.tok.link::before {{ content: "\2197 "; color: var(--text-muted); }}
+.tok.link::before {{ content: "\\2197 "; color: var(--text-muted); }}
 .none {{ color: var(--text-muted); font-size: 11.5px; font-style: italic; padding: 4px 0; }}
+.none.name {{ color: var(--text-dim); }}
 
 /* Bios */
 .bio-item {{
@@ -710,20 +620,8 @@ a {{ color: inherit; text-decoration: none; }}
   border: 1px solid var(--border);
   margin-bottom: 8px;
 }}
-.bio-src {{
-  display: block;
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
-}}
-.bio-text {{
-  font-size: 12px;
-  color: var(--text-dim);
-  font-family: var(--font-sans);
-  line-height: 1.5;
-}}
+.bio-src {{ display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }}
+.bio-text {{ font-size: 12px; color: var(--text-dim); font-family: var(--font-sans); line-height: 1.5; }}
 
 /* Correlations */
 .corr-item {{
@@ -734,22 +632,9 @@ a {{ color: inherit; text-decoration: none; }}
   border-bottom: 1px solid var(--border);
   align-items: center;
 }}
-.corr-type {{
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}}
-.corr-val {{
-  font-size: 12px;
-  color: var(--amber);
-  font-weight: 500;
-}}
-.corr-plats {{
-  font-size: 11px;
-  color: var(--text-dim);
-  text-align: right;
-}}
+.corr-type {{ font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }}
+.corr-val {{ font-size: 12px; color: var(--amber); font-weight: 500; }}
+.corr-plats {{ font-size: 11px; color: var(--text-dim); text-align: right; }}
 .corr-item.strong .corr-type {{ color: var(--red); }}
 .corr-item.moderate .corr-type {{ color: var(--amber); }}
 
@@ -766,22 +651,9 @@ a {{ color: inherit; text-decoration: none; }}
   overflow: hidden;
   background: var(--bg-2);
 }}
-.face img {{
-  width: 100%; height: 100%;
-  object-fit: cover;
-  filter: grayscale(0.3) contrast(1.05);
-  transition: filter 0.3s var(--ease), transform 0.4s var(--ease);
-}}
+.face img {{ width: 100%; height: 100%; object-fit: cover; filter: grayscale(0.3) contrast(1.05); transition: filter 0.3s var(--ease), transform 0.4s var(--ease); }}
 .face:hover img {{ filter: none; transform: scale(1.05); }}
-.face .cap {{
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  padding: 4px 6px;
-  background: linear-gradient(transparent, rgba(10,10,15,0.9));
-  font-size: 9px;
-  color: var(--text-hi);
-  font-weight: 600;
-}}
+.face .cap {{ position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 6px; background: linear-gradient(transparent, rgba(10,10,15,0.9)); font-size: 9px; color: var(--text-hi); font-weight: 600; }}
 
 /* Accounts table */
 .controls {{
@@ -811,9 +683,7 @@ a {{ color: inherit; text-decoration: none; }}
   transition: all 0.15s var(--ease);
 }}
 .flag:hover {{ color: var(--text); border-color: var(--text-muted); }}
-.flag[aria-pressed="true"] {{
-  color: var(--bg); background: var(--green); border-color: var(--green); font-weight: 700;
-}}
+.flag[aria-pressed="true"] {{ color: var(--bg); background: var(--green); border-color: var(--green); font-weight: 700; }}
 
 .grp {{ margin-bottom: 24px; }}
 .grp.hidden {{ display: none; }}
@@ -835,54 +705,39 @@ a {{ color: inherit; text-decoration: none; }}
   border-left: 2px solid transparent;
   transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
 }}
-.row:hover {{
-  background: var(--bg-2);
-  border-left-color: var(--cc);
-}}
+.row:hover {{ background: var(--bg-2); border-left-color: var(--cc); }}
 .row a {{ display: contents; }}
 
-.pfp {{
-  width: 28px; height: 28px;
-  border: 1px solid var(--border);
-  object-fit: cover;
-  filter: grayscale(0.4);
-  transition: filter 0.2s var(--ease);
-}}
+.pfp {{ width: 28px; height: 28px; border: 1px solid var(--border); object-fit: cover; filter: grayscale(0.4); transition: filter 0.2s var(--ease); }}
 .row:hover .pfp {{ filter: none; }}
-.pfp-ph {{
-  width: 28px; height: 28px;
-  border: 1px solid var(--border);
-  display: grid; place-items: center;
-  font-size: 10px; font-weight: 800;
-  color: var(--text-muted); background: var(--bg-3);
-}}
+.pfp-ph {{ width: 28px; height: 28px; border: 1px solid var(--border); display: grid; place-items: center; font-size: 10px; font-weight: 800; color: var(--text-muted); background: var(--bg-3); }}
 
 .row-info {{ min-width: 0; }}
 .row-plat {{ font-size: 12px; font-weight: 600; color: var(--text-hi); }}
-.row-meta {{
-  font-size: 11px; color: var(--text-dim);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}}
-.row-go {{
-  font-size: 11px; color: var(--text-muted);
-  transition: color 0.15s var(--ease);
-}}
+.row-meta {{ font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+.row-go {{ font-size: 11px; color: var(--text-muted); transition: color 0.15s var(--ease); }}
 .row:hover .row-go {{ color: var(--green); }}
+.row-go.warned {{ color: var(--amber); }}
+.row:hover .row-go.warned {{ color: var(--red); }}
 
-.empty {{
-  display: none; padding: 40px; text-align: center;
-  border: 1px dashed var(--border); color: var(--text-muted);
+.collapse-toggle {{
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 12px 0;
+  transition: color 0.15s;
 }}
+.collapse-toggle:hover {{ color: var(--text); }}
+.collapse-body {{ overflow: hidden; transition: max-height 0.3s var(--ease); }}
+.collapse-body.hidden {{ max-height: 0 !important; }}
+
+.empty {{ display: none; padding: 40px; text-align: center; border: 1px dashed var(--border); color: var(--text-muted); }}
 .empty.show {{ display: block; }}
 
 /* Footer */
-.footer {{
-  padding: 32px 0 48px;
-  border-top: 1px solid var(--border);
-  display: flex; justify-content: space-between;
-  flex-wrap: wrap; gap: 12px;
-  font-size: 11px; color: var(--text-muted);
-}}
+.footer {{ padding: 32px 0 48px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-muted); }}
 .footer .ok {{ color: var(--green); }}
 
 @media (max-width: 680px) {{
@@ -906,7 +761,7 @@ a {{ color: inherit; text-decoration: none; }}
     <div>
       <div class="brand">Argis Intelligence Report</div>
       <div class="target"><span class="at">@</span>{esc(username)}</div>
-      <div class="subtitle">{n_accounts} verified accounts across {n_categories} categories</div>
+      <div class="subtitle">{n_verified} verified accounts across {n_categories} categories</div>
     </div>
     <div class="meta-info">
       Generated {timestamp}<br>
@@ -929,11 +784,12 @@ a {{ color: inherit; text-decoration: none; }}
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="stat-label">Accounts</div><div class="stat-value" style="color:var(--green)">{n_accounts}</div><div class="stat-sub">verified hits</div></div>
+  <div class="stat"><div class="stat-label">Verified</div><div class="stat-value" style="color:var(--green)">{n_verified}</div><div class="stat-sub">confirmed hits</div></div>
   <div class="stat"><div class="stat-label">Categories</div><div class="stat-value" style="color:var(--cyan)">{n_categories}</div><div class="stat-sub">life areas</div></div>
   <div class="stat"><div class="stat-label">Avatars</div><div class="stat-value" style="color:var(--magenta)">{n_avatars}</div><div class="stat-sub">captured</div></div>
   <div class="stat"><div class="stat-label">Emails</div><div class="stat-value" style="color:var(--amber)">{n_emails}</div><div class="stat-sub">personal</div></div>
   <div class="stat"><div class="stat-label">Names</div><div class="stat-value" style="color:var(--text-hi)">{n_names}</div><div class="stat-sub">display names</div></div>
+  {f'<div class="stat"><div class="stat-label">Review</div><div class="stat-value" style="color:var(--amber)">{n_ambiguous}</div><div class="stat-sub">need review</div></div>' if n_ambiguous else ''}
 </div>
 
 <section class="section">
@@ -965,6 +821,15 @@ a {{ color: inherit; text-decoration: none; }}
   <div class="faces" id="faces"></div>
 </section>''' if identity['avatars'] else ''}
 
+{f'''<section class="section">
+  <div class="sec-title collapse-toggle" onclick="toggleCollapse('amb')">
+    Accounts Needing Review ({n_ambiguous}) <span id="amb-arrow">\u25bc</span>
+  </div>
+  <div class="collapse-body" id="amb-body">
+    {amb_html}
+  </div>
+</section>''' if ambiguous else ''}
+
 <section class="section">
   <div class="sec-title">Verified Accounts</div>
   <div class="controls">
@@ -977,7 +842,7 @@ a {{ color: inherit; text-decoration: none; }}
 </section>
 
 <footer class="footer">
-  <span><span class="ok">\u2713</span> scan complete // {n_accounts} verified / public signals only</span>
+  <span><span class="ok">\u2713</span> scan complete // {n_verified} verified / {n_ambiguous} review / public signals only</span>
   <span>defensive OSINT // no deanonymization</span>
 </footer>
 
@@ -985,7 +850,15 @@ a {{ color: inherit; text-decoration: none; }}
 
 <script>
 const DATA = {data_json};
-const COLORS = {json.dumps(cat_colors)};
+const COLORS = {json.dumps(_CAT_COLORS)};
+
+// Toggle collapse
+function toggleCollapse(id) {{
+  const body = document.getElementById(id+'-body');
+  const arrow = document.getElementById(id+'-arrow');
+  const hidden = body.classList.toggle('hidden');
+  if (arrow) arrow.textContent = hidden ? '\\25b2' : '\\25bc';
+}}
 
 // Render avatars
 const facesEl = document.getElementById('faces');
@@ -993,7 +866,7 @@ if (facesEl) {{
   DATA.filter(d => d.img && !d.img.includes('default')).forEach(d => {{
     const div = document.createElement('div');
     div.className = 'face';
-    div.innerHTML = `<img src="${{d.img}}" alt="${{d.p}}" loading="lazy" onerror="this.parentElement.remove()"><div class="cap">${{d.p}}</div>`;
+    div.innerHTML = '<img src="' + d.img + '" alt="' + d.p + '" loading="lazy" onerror="this.parentElement.remove()"><div class="cap">' + d.p + '</div>';
     facesEl.appendChild(div);
   }});
 }}
@@ -1010,28 +883,27 @@ Object.entries(cats).sort((a,b) => b[1].length - a[1].length).forEach(([cat, ite
   const color = COLORS[cat] || '#64b5f6';
   grp.style.setProperty('--cc', color);
 
-  let html = `<div class="grp-h"><span>${{cat}}</span><span class="cnt">${{items.length}}</span></div>`;
+  let html = '<div class="grp-h"><span>' + cat + '</span><span class="cnt">' + items.length + '</span></div>';
   items.forEach(d => {{
     const img = d.img
-      ? `<img class="pfp" src="${{d.img}}" loading="lazy" onerror="this.outerHTML='<div class=pfp-ph>' + d.p[0].toUpperCase() + '</div>'">`
-      : `<div class="pfp-ph">${{d.p[0].toUpperCase()}}</div>`;
-
+      ? '<img class="pfp" src="' + d.img + '" loading="lazy" onerror="this.outerHTML=\'<div class=pfp-ph>\' + d.p[0].toUpperCase() + \'</div>\'">'
+      : '<div class="pfp-ph">' + d.p[0].toUpperCase() + '</div>';
     const meta = d.bio ? d.bio.slice(0, 80) : d.url;
-    html += `<div class="row" data-search="${{(d.p + ' ' + (d.name||'') + ' ' + (d.bio||'') + ' ' + (d.mail||'')).toLowerCase()}}">
-      <a href="${{d.url}}" target="_blank" rel="noopener">
-        ${{img}}
-        <div class="row-info">
-          <div class="row-plat">${{d.p}}</div>
-          <div class="row-meta">${{meta}}</div>
-        </div>
-        <span class="row-go">\u2197</span>
-      </a>
-    </div>`;
+    const search = (d.p + ' ' + (d.name||'') + ' ' + (d.bio||'') + ' ' + (d.mail||'')).toLowerCase();
+    const w = d.warnings && d.warnings.length ? d.warnings.join('; ') : '';
+    html += '<div class="row" data-search="' + search + '">'
+      + '<a href="' + d.url + '" target="_blank" rel="noopener">'
+      + img
+      + '<div class="row-info">'
+      + '<div class="row-plat">' + d.p + '</div>'
+      + '<div class="row-meta">' + meta + '</div>'
+      + '</div>'
+      + (w ? '<span class="row-go warned" title="' + w + '">\\u26a0</span>' : '<span class="row-go">\\u2197</span>')
+      + '</a></div>';
   }});
   grp.innerHTML = html;
   groupsEl.appendChild(grp);
 
-  // Add filter button
   const btn = document.createElement('button');
   btn.className = 'flag';
   btn.dataset.cat = cat;
@@ -1056,23 +928,19 @@ function applyFilters() {{
     const cat = grp.dataset.cat;
     const catVisible = showAll || activeFlags.has(cat);
     if (!catVisible) {{ grp.classList.add('hidden'); return; }}
-
     let grpVisible = 0;
     grp.querySelectorAll('.row').forEach(row => {{
       const match = !term || row.dataset.search.includes(term);
       row.style.display = match ? '' : 'none';
       if (match) grpVisible++;
     }});
-
     grp.classList.toggle('hidden', grpVisible === 0);
     visible += grpVisible;
   }});
-
   empty.classList.toggle('show', visible === 0);
 }}
 
 q.addEventListener('input', applyFilters);
-
 document.querySelectorAll('.flag').forEach(btn => {{
   btn.addEventListener('click', () => {{
     if (btn.dataset.cat === 'all') {{
@@ -1081,7 +949,6 @@ document.querySelectorAll('.flag').forEach(btn => {{
     }} else {{
       const cur = btn.getAttribute('aria-pressed') === 'true';
       btn.setAttribute('aria-pressed', cur ? 'false' : 'true');
-      // Sync "all" button
       const allBtn = document.querySelector('.flag[data-cat="all"]');
       const allActive = [...document.querySelectorAll('.flag:not([data-cat="all"])')].every(b => b.getAttribute('aria-pressed') === 'true');
       allBtn.setAttribute('aria-pressed', allActive ? 'true' : 'false');
@@ -1094,11 +961,7 @@ document.querySelectorAll('.flag').forEach(btn => {{
 </html>"""
 
 
-def generate_dossier(
-    results: list[dict],
-    username: str,
-    output: Optional[Path] = None,
-) -> str:
+def generate_dossier(results: list[dict], username: str, output: Optional[Path] = None) -> str:
     """Generate dossier and optionally write to file. Returns HTML string."""
     html_content = generate_dossier_html(results, username)
     if output:
@@ -1106,7 +969,18 @@ def generate_dossier(
     return html_content
 
 
-# --- backward-compatible aliases for the old API ---
+# ═══════════════════════════════════════════════════════════════════
+#  BACKWARD-COMPATIBLE ALIASES
+# ═══════════════════════════════════════════════════════════════════
+
+def _pfp_html(r: dict) -> str:
+    img = r.get("img", "")
+    p = r.get("p", "")
+    initial = p[0].upper() if p else "?"
+    if img:
+        return f'<img class="pfp" src="{html.escape(img)}" loading="lazy" onerror="this.outerHTML=\'<div class=pfp-ph>{initial}</div>\'">'
+    return f'<div class="pfp-ph">{initial}</div>'
+
 
 async def build_dossier(
     username: str,
@@ -1120,21 +994,72 @@ async def build_dossier(
     use_tor: bool = False,
     render: bool = False,
 ) -> dict:
-    """Backward-compatible wrapper — returns a dict that looks like the old Dossier."""
-    found = {p: r for p, r in results.items() if r.get("status") == "FOUND" and r.get("url")}
-    html_str = generate_dossier_html(list(found.values()), username)
-    return {"username": username, "results": results, "found": found, "html": html_str,
-            "total_scanned": len(results)}
+    """Normalize scan results and generate dossier HTML.
+
+    This is the main entry point used by the CLI. It normalizes raw
+    scanner output and passes properly-shaped data to the report generator.
+    """
+    from argis.verify import determine_verification
+
+    site_categories = site_categories or {}
+
+    # Normalize all results into ProfileEvidence objects
+    profiles = normalize_scan_results(results, site_categories, username)
+
+    # Run verification on each profile
+    verified_profiles = []
+    for pe in profiles:
+        state, warnings = determine_verification(
+            status=pe.status,
+            title=pe.title,
+            description=pe.bio,
+            url=pe.url,
+            platform=pe.platform,
+            username=username,
+        )
+        pe.verification = state
+        pe.warnings.extend(warnings)
+        verified_profiles.append(pe)
+
+    # Convert to dossier dicts
+    dossier_dicts = profiles_to_dossier_dicts(verified_profiles)
+
+    # Generate HTML
+    html_str = generate_dossier_html(dossier_dicts, username)
+
+    found: dict[str, dict] = {}
+    for pe in verified_profiles:
+        if pe.status == "FOUND":
+            found[pe.platform] = {
+                "status": pe.status,
+                "url": pe.url,
+                "p": pe.platform,
+                "cat": pe.category,
+                "name": pe.display_name or pe.title or "",
+                "bio": pe.bio or "",
+                "mail": "; ".join(pe.emails),
+                "img": pe.avatar_url or "",
+                "verification": pe.verification,
+                "warnings": pe.warnings,
+            }
+
+    return {
+        "username": username,
+        "results": found,
+        "found": found,
+        "html": html_str,
+        "total_scanned": len(results),
+    }
 
 
 def print_dossier(dossier: dict, console) -> None:
-    """Backward-compatible stub — prints summary from old-style dossier dict."""
+    """Print dossier summary to console."""
     n = len(dossier.get("found", {}))
     console.print(f"[bold cyan]@{dossier['username']}[/bold cyan] — {n} accounts found")
 
 
 def to_html_report(dossier_or_results, *, graph_payload: dict | None = None) -> str:
-    """Backward-compatible — accepts old Dossier/dict or new results dict."""
+    """Backward-compatible report extraction."""
     if isinstance(dossier_or_results, dict):
         if "results" in dossier_or_results:
             return dossier_or_results.get("html", "")
@@ -1143,7 +1068,7 @@ def to_html_report(dossier_or_results, *, graph_payload: dict | None = None) -> 
 
 
 def to_pdf(dossier_or_results, out_path: str | Path, *, graph_payload: dict | None = None) -> bool:
-    """Render dossier HTML to PDF. WeasyPrint then playwright fallback."""
+    """Render dossier HTML to PDF."""
     html_str = to_html_report(dossier_or_results, graph_payload=graph_payload)
     try:
         from weasyprint import HTML
@@ -1169,5 +1094,5 @@ def to_pdf(dossier_or_results, out_path: str | Path, *, graph_payload: dict | No
 
 async def build_dossier_graph(username: str, *, timeout=12.0, concurrency=15,
                                proxy=None, use_tor=False) -> dict | None:
-    """Backward-compatible stub — returns None (graph generation was in old code)."""
+    """Backward-compatible stub — graph feature removed."""
     return None
