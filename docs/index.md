@@ -28,13 +28,29 @@
 
     [:octicons-arrow-right-24: Monitor command](commands/monitor.md)
 
+-   :material-brain: **AI Analysis**
+
+    ---
+
+    Pass scan results to OpenAI or Anthropic for LLM-powered risk assessment.
+
+    [:octicons-arrow-right-24: Scan options](commands/scan.md)
+
 -   :material-file-download: **Multiple Outputs**
 
     ---
 
-    Export to JSON, CSV, HTML, Markdown, XML, grepable format. Slack & Discord webhooks.
+    Export to JSON, CSV, HTML, Markdown, TXT, NDJSON, XMind, GraphML, Neo4j, PDF. Slack & Discord webhooks.
 
     [:octicons-arrow-right-24: Output formats](guides/output-formats.md)
+
+-   :material-shield-lock: **Intelligence Modules**
+
+    ---
+
+    Breach checking, web mention search, geo-inference, unified self-assessment (`me`), and MCP server.
+
+    [:octicons-arrow-right-24: Intelligence docs](commands/scan.md)
 
 </div>
 
@@ -68,5 +84,10 @@ argis recon example.com -sv -os -df
 - :material-chart-bell-curve: **Change Monitoring** — continuously watch usernames and report changes
 - :material-compare: **Side-by-side Comparison** — compare two usernames to find shared/unique profiles
 - :material-web: **Wayback Machine** — historical snapshots of profiles
-- :material-file-delivery: **Multiple Outputs** — JSON, CSV, HTML, Markdown, XML, grepable, webhooks
+- :material-file-delivery: **Multiple Outputs** — JSON, CSV, HTML, Markdown, TXT, NDJSON, XMind, GraphML, Neo4j, PDF, webhooks
+- :material-brain: **AI Analysis** — LLM-powered risk assessment (OpenAI / Anthropic)
 - :material-tune: **Configurable** — config file, environment variables, CLI flags
+- :material-shield-lock: **Breach Checker** — `argis breach` checks emails against known breaches
+- :material-web: **Web Mentions** — `argis mentions` searches Google dorks for username/email references
+- :material-earth: **Geo Inference** — `argis geo` infers user region from profile signals
+- :material-account: **Self-assessment** — `argis me` consolidates scan + breach + mentions + geo + impersonation

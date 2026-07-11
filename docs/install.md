@@ -26,7 +26,7 @@ argis --version
 You should see:
 
 ```
-Argis v0.4.2
+Argis v0.8.0
 ```
 
 !!! tip "Updating"

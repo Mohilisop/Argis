@@ -30,13 +30,19 @@ Named after **Argus Panoptes**, the hundred-eyed giant of Greek myth — every p
 - :satellite: **Change monitoring** — continuously watch usernames and report changes
 - :left_right_arrow: **Side-by-side comparison** — compare two usernames
 - :movie_camera: **Wayback Machine** — historical snapshots of profiles
-- :file_folder: **Multiple outputs** — JSON, CSV, HTML, Markdown, XML, grepable, webhooks
+- :file_folder: **Multiple outputs** — JSON, CSV, HTML, Markdown, TXT, NDJSON, XMind, GraphML, Neo4j, PDF, webhooks
+- :brain: **AI analysis** — LLM-powered risk assessment via OpenAI or Anthropic
 - :gear: **Configurable** — config file, env vars, CLI flags
 - :robot: **OCR** — extract usernames from screenshots
 - :camera: **Face detection** — detect faces and reverse-search via browser
 - :broom: **Self-healing** — auto-verify site rules and flag silent rot
 - :link: **Identity correlation** — cluster accounts into real identities vs impersonators
 - :shield: **Impersonation guard** — hunt lookalike handles wearing your face
+- :lock: **Breach checker** — check if emails were compromised in known breaches
+- :speech_balloon: **Web mentions** — Google dork search for username/email mentions
+- :earth_asia: **Geo inference** — infer geographic region from profile signals
+- :bust_in_silhouette: **Unified threat report** — `argis me` consolidates your entire footprint
+- :electric_plug: **MCP server** — connect Argis to any MCP-compatible AI assistant
 
 ---
 
@@ -115,10 +121,15 @@ Variant generation covers separators, affixes, digit-leet, Unicode homoglyphs, a
 | `doctor` | Health-check every site rule and flag rot |
 | `link` | Cluster accounts into real identities vs impostors |
 | `guard` | Hunt lookalike handles impersonating you |
+| `breach` | Check emails for known breaches (HIBP-style) |
+| `mentions` | Web-mention search via Google dorks |
+| `geo` | Infer geographic region from profile signals |
+| `me` | Unified self-assessment: scan + breach + mentions + geo + impersonation |
 | `recon` | Port scan, service detection, OS fingerprinting, DNS, WHOIS, geo |
 | `discover` | Sweep a subnet to find live hosts |
 | `domain` | DNS resolution, WHOIS, port scan |
 | `myip` | Show public IP + geolocation |
+| `mcp` | Run Argis as an MCP server (Model Context Protocol) |
 | `history` | Show past scan history |
 | `clear-history` | Delete scan history |
 | `monitor` | Continuously watch username for changes |
@@ -136,6 +147,11 @@ argis scan johndoe
 argis scan johndoe --category coding,social
 argis scan johndoe --site GitHub                # just one platform
 argis scan --file usernames.txt --export csv
+argis scan johndoe -T report.txt -X mindmap.xmind  # individual format exports
+argis scan johndoe -G graph.graphml --neo4j import.cypher  # graph exports
+argis scan johndoe -P report.pdf               # PDF report
+argis scan johndoe --ai                         # AI-powered risk analysis
+argis scan johndoe --min-confidence 60          # only high-confidence hits
 ```
 
 ### scan-image
