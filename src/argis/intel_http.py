@@ -160,6 +160,9 @@ class AsyncFetcher:
         return f
 
     async def get_bytes(self, url: str) -> bytes | None:
+        if not url.startswith(("http://", "https://")):
+            return None
+
         cached = self._read_cache(url)
         if cached is not None:
             return cached.text.encode("utf-8") if not cached.error else None

@@ -161,11 +161,15 @@ def print_dossier(dossier: Dossier, console) -> None:
 
 
 _CAT_ICON = {
-    "coding": "\U0001f4bb", "social": "\U0001f4ac", "gaming": "\U0001f3ae",
-    "media": "\U0001f3ac", "professional": "\U0001f454", "creative": "\U0001f3a8",
-    "blogging": "\u270d\ufe0f", "finance": "\U0001f4b0", "lifestyle": "\U0001f31f",
-    "messaging": "\U0001f4e8", "funding": "\U0001f91d", "identity": "\U0001faaa",
-    "security": "\U0001f510", "docs": "\U0001f4c4", "startup": "\U0001f680",
+    "development": "\U0001f4bb", "social": "\U0001f4ac", "gaming": "\U0001f3ae",
+    "forums": "\U0001f4ac", "art": "\U0001f3a8", "music": "\U0001f3b5",
+    "tools": "\U0001f527", "hobby": "\U0001f3b2", "blogging": "\u270d\ufe0f",
+    "finance": "\U0001f4b0", "shopping": "\U0001f6d2", "education": "\U0001f393",
+    "professional": "\U0001f454", "entertainment": "\U0001f3ad", "security": "\U0001f510",
+    "video": "\U0001f3ac", "content": "\U0001f4f9", "messaging": "\U0001f4e8",
+    "travel": "\u2708\ufe0f", "crypto": "\U0001fa99", "geo": "\U0001f30d",
+    "fitness": "\U0001f4aa", "photography": "\U0001f4f7", "wiki": "\U0001f4d6",
+    "freelance": "\U0001f91d", "maker": "\U0001f3ed",
     "uncategorized": "\U0001f517",
 }
 
@@ -265,10 +269,17 @@ def to_html_report(dossier: Dossier, *, graph_payload: dict | None = None) -> st
   --green:oklch(84% 0.19 148); --green-d:oklch(60% 0.16 150);
   --cyan:oklch(82% 0.13 205); --amber:oklch(84% 0.15 82); --red:oklch(68% 0.19 24);
   --magenta:oklch(74% 0.16 330); --violet:oklch(76% 0.12 288);
-  --c-coding:var(--cyan); --c-social:var(--magenta); --c-media:var(--red);
-  --c-creative:var(--violet); --c-blogging:var(--green); --c-gaming:var(--amber);
-  --c-security:oklch(80% 0.13 55); --c-messaging:oklch(78% 0.11 235);
-  --c-finance:oklch(82% 0.16 145); --c-education:oklch(80% 0.12 100);
+  --c-development:var(--cyan); --c-social:var(--magenta); --c-gaming:var(--amber);
+  --c-forums:var(--violet); --c-art:oklch(82% 0.14 330); --c-music:oklch(80% 0.12 280);
+  --c-tools:oklch(76% 0.1 220); --c-hobby:var(--amber); --c-blogging:var(--green);
+  --c-finance:oklch(82% 0.16 145); --c-shopping:oklch(78% 0.13 30);
+  --c-education:oklch(80% 0.12 100); --c-professional:var(--violet);
+  --c-entertainment:var(--red); --c-security:oklch(80% 0.13 55);
+  --c-video:var(--red); --c-content:var(--magenta); --c-messaging:oklch(78% 0.11 235);
+  --c-travel:oklch(80% 0.12 190); --c-crypto:oklch(82% 0.14 85);
+  --c-geo:oklch(80% 0.12 160); --c-fitness:oklch(82% 0.16 120);
+  --c-photography:oklch(80% 0.13 50); --c-wiki:oklch(78% 0.1 240);
+  --c-freelance:var(--green); --c-maker:oklch(80% 0.14 30);
   --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;--sp-7:48px;--sp-8:72px;
   --ease:cubic-bezier(0.22,1,0.36,1); --glow:0 0 14px oklch(84% 0.19 148 / .32);
 }}

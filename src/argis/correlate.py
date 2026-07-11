@@ -160,7 +160,11 @@ async def _fetch_signals(
     if fetch_avatar:
         im = _OG_IMAGE.search(html)
         if im:
-            sig.avatar_url = im.group(1)
+            avatar = im.group(1).strip()
+            if avatar.startswith("/"):
+                from urllib.parse import urljoin
+                avatar = urljoin(url, avatar)
+            sig.avatar_url = avatar
             if _HAS_PIL:
                 data = await fetcher.get_bytes(sig.avatar_url)
                 if data:
