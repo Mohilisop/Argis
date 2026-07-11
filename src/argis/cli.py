@@ -67,6 +67,9 @@ def main(
                     ("scan-face <img>", "Detect faces and reverse-search them for profiles"),
                 ],
                 "Intelligence": [
+                    ("breach <username>", "Check extracted emails against known data breaches (HIBP)"),
+                    ("mentions <username>", "Search for handle in pastes, code, and Google dorks"),
+                    ("locate <username>", "Infer probable geographic region from profile metadata"),
                     ("doctor", "Health-check every site rule and flag rot"),
                     ("link <username>", "Cluster accounts into real identities vs impersonators"),
                     ("guard <username>", "Hunt lookalike handles impersonating you"),
@@ -2084,6 +2087,141 @@ def doctor(
 
     if exit_code and report_obj.broken:
         raise typer.Exit(code=1)
+
+
+@app.command(rich_help_panel="Intelligence")
+def breach(
+    username: str = typer.Argument(..., help="Handle to scan and check."),
+    emails: Optional[str] = typer.Option(
+        None, "--emails", help="Comma-separated emails to check directly (skip scan)."),
+    category: Optional[str] = typer.Option(None, "--category", "-c"),
+):
+    """Check if emails extracted from a scan appear in known data breaches.
+
+    Uses the public Have I Been Pwned API. Tells you which of your emails
+    leaked, in which breaches, and what data classes were exposed.
+
+    \b
+    Examples:
+      argis breach johndoe
+      argis breach --emails me@example.com,work@corp.com
+    """
+    from argis.breach import check_all
+
+    if emails:
+        targets = [e.strip() for e in emails.split(",") if e.strip()]
+    else:
+        cats = tuple(c.strip().lower() for c in category.split(",")) if category else None
+        engine = ArgisEngine(username, categories=cats)
+        console.print(f"[dim]Scanning @{username} for emails...[/dim]")
+        results = asyncio.run(engine.run_scan(quiet=True))
+        targets = sorted({
+            e for r in results.values()
+            if r.get("status") == "FOUND"
+            for e in r.get("emails", [])
+        })
+        if not targets:
+            console.print("[yellow]No emails found in scan. Use --emails to check directly.[/yellow]")
+            raise typer.Exit()
+
+    console.print(f"[cyan]Checking {len(targets)} email(s) against HIBP...[/cyan]")
+    reports = asyncio.run(check_all(targets))
+
+    for rep in reports:
+        if rep.error:
+            console.print(f"  [yellow]! {rep.email}: {rep.error}[/yellow]")
+        elif rep.compromised:
+            console.print(f"  [bold red]\u2716 {rep.email}[/bold red] "
+                          f"[red]{len(rep.breaches)} breach(es)[/red]")
+            for b in rep.breaches[:8]:
+                classes = ", ".join(b.data_classes[:5])
+                console.print(
+                    f"    [dim]{b.date}[/dim] [white]{b.name}[/white] "
+                    f"({b.pwn_count:,} accounts) [dim]{classes}[/dim]")
+        else:
+            console.print(f"  [green]\u2713 {rep.email}[/green] [dim]clean[/dim]")
+
+    compromised = [r for r in reports if r.compromised]
+    if compromised:
+        console.print(f"\n[bold red]{len(compromised)}/{len(reports)} email(s) "
+                      f"appear in known breaches.[/bold red]")
+    else:
+        console.print(f"\n[green]All {len(reports)} email(s) clean.[/green]")
+
+
+@app.command(rich_help_panel="Intelligence")
+def mentions(
+    username: str = typer.Argument(..., help="Handle to search for in pastes/code/leaks."),
+):
+    """Search for your handle in public pastes, GitHub code, and indexed leaks.
+
+    Finds mentions BEYOND profiles: config files, paste dumps, code comments,
+    and generates Google dork queries for deeper manual investigation.
+
+    \b
+    Examples:
+      argis mentions johndoe
+    """
+    from argis.mentions import scan_mentions
+
+    console.print(f"[cyan]Searching for @{username} in public code/pastes...[/cyan]")
+    report = asyncio.run(scan_mentions(username))
+
+    if report.mentions:
+        console.print(f"\n[bold red]{len(report.mentions)} mention(s) found:[/bold red]")
+        for m in report.mentions:
+            line = f"  [red]\u2022[/red] [{m.source}] [bold]{m.title}[/bold]\n    [cyan underline]{m.url}[/cyan underline]"
+            if m.snippet:
+                line += f"\n    [dim]{m.snippet}[/dim]"
+            console.print(line)
+    else:
+        console.print("[green]No public code/paste mentions found.[/green]")
+
+    if report.dorks:
+        console.print("\n[bold]Google dork queries[/bold] (paste into browser):")
+        for d in report.dorks:
+            console.print(f"  [dim]\u2192[/dim] {d}")
+
+
+@app.command(rich_help_panel="Intelligence")
+def locate(
+    username: str = typer.Argument(..., help="Handle to geolocate from profile metadata."),
+    category: Optional[str] = typer.Option(None, "--category", "-c"),
+):
+    """Infer probable geographic region from public profile metadata.
+
+    Analyzes location fields, script/language, currency symbols, and
+    region-specific platform usage across all found accounts to triangulate
+    where the person likely lives. No IP tracking, just public signals.
+
+    \b
+    Examples:
+      argis locate johndoe
+    """
+    from argis.geo_infer import infer_geo
+
+    cats = tuple(c.strip().lower() for c in category.split(",")) if category else None
+    engine = ArgisEngine(username, categories=cats)
+    console.print(f"[dim]Scanning @{username}...[/dim]")
+    results = asyncio.run(engine.run_scan(quiet=True))
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND"}
+
+    bios = [r.get("description", "") for r in found.values() if r.get("description")]
+    titles = [r.get("title", "") for r in found.values() if r.get("title")]
+    platforms = list(found.keys())
+
+    signals = infer_geo(bios, titles, platforms)
+
+    if signals:
+        console.print(f"\n[bold cyan]Geographic inference for @{username}:[/bold cyan]\n")
+        for i, s in enumerate(signals[:5], 1):
+            bar = "\u2588" * int(s.confidence * 10) + "\u2591" * (10 - int(s.confidence * 10))
+            console.print(
+                f"  {i}. [bold]{s.country}[/bold]  [{s.confidence:.0%}]  {bar}\n"
+                f"     [dim]{s.evidence}[/dim]")
+    else:
+        console.print("[dim]Not enough signals to infer location.[/dim]")
+    console.print("\n[dim]Based on public profile metadata only. Not GPS/IP tracking.[/dim]")
 
 
 @app.command(rich_help_panel="Utilities")
