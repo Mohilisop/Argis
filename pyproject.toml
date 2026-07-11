@@ -36,6 +36,11 @@ render = [
 pdf = [
     "weasyprint>=61",
 ]
+mcp = [
+    "mcp>=1.0",
+    "uvicorn>=0.29",
+    "starlette>=0.37",
+]
 web = [
     "fastapi>=0.110",
     "uvicorn>=0.29",

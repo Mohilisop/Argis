@@ -94,6 +94,7 @@ def main(
                     ("wayback <username>", "Check Wayback Machine history for a username"),
                 ],
                 "Utilities": [
+                    ("mcp", "Start Argis as an MCP server (callable by Claude, Cursor, etc.)"),
                     ("categories", "List all available platform categories"),
                     ("search", "Search across all scan history"),
                     ("stats", "Aggregate statistics on scan results"),
@@ -1921,6 +1922,29 @@ def stats(
             table.add_row(entry["platform"], str(entry["count"]))
 
         console.print(table)
+
+
+@app.command(rich_help_panel="Utilities")
+def mcp(
+    transport: str = typer.Option("stdio", "--transport", help="'stdio' or 'sse'."),
+    host: str = typer.Option("127.0.0.1", "--host"),
+    port: int = typer.Option(8080, "--port"),
+):
+    """Start Argis as an MCP server (callable by Claude, Cursor, etc.).
+
+    \b
+    Examples:
+      argis mcp                            # stdio (for Claude Desktop / Claude Code)
+      argis mcp --transport sse --port 8080  # SSE (for web clients)
+    """
+    from argis.mcp_server import run_stdio, run_sse, _HAS_MCP
+    if not _HAS_MCP:
+        console.print("[yellow]MCP server needs: pip install \"argis[mcp]\"[/yellow]")
+        raise typer.Exit(1)
+    if transport == "sse":
+        asyncio.run(run_sse(host, port))
+    else:
+        asyncio.run(run_stdio())
 
 
 @app.command(rich_help_panel="Utilities")
