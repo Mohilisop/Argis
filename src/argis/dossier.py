@@ -178,15 +178,29 @@ def to_html_report(dossier: Dossier, *, graph_payload: dict | None = None) -> st
     d = dossier
     n = len(d.accounts)
     email_count = len(d.emails)
-    top_name = d.names[0] if d.names else "\u2014"
+    top_name = d.names[0] if d.names else ""
     with_avatar = sum(1 for a in d.accounts if a.avatar_url)
+    avatar_hashes = [a.labels.get("avatar_hash") for a in d.accounts
+                     if a.labels and a.labels.get("avatar_hash")]
+    same_face = len(avatar_hashes) - len(set(avatar_hashes)) if len(avatar_hashes) > 1 else 0
 
-    cat_order = ["coding", "social", "media", "creative", "blogging", "gaming", "funding", "professional", "uncategorized"]
+    cat_order = sorted({a.category for a in d.accounts})
+    if "uncategorized" in cat_order:
+        cat_order.remove("uncategorized")
+        cat_order.append("uncategorized")
+    if not cat_order:
+        cat_order = ["uncategorized"]
+
+    alias_map: dict[str, str] = {}
+    for a in d.accounts:
+        c = a.category or "uncategorized"
+        alias_map.setdefault(c, c)
+
     accounts_json = []
     for a in d.accounts:
         accounts_json.append({
             "p": a.platform,
-            "cat": a.category if a.category in cat_order else "uncategorized",
+            "cat": alias_map.get(a.category, "uncategorized"),
             "name": a.display_name,
             "bio": a.bio,
             "mail": a.emails[0] if a.emails else "",
@@ -197,20 +211,47 @@ def to_html_report(dossier: Dossier, *, graph_payload: dict | None = None) -> st
     json_data = json.dumps(accounts_json, ensure_ascii=False)
     cat_counts = {}
     for a in d.accounts:
-        c = a.category if a.category in cat_order else "uncategorized"
+        c = alias_map.get(a.category, "uncategorized")
         cat_counts[c] = cat_counts.get(c, 0) + 1
-    cats_json = json.dumps([c for c in cat_order if c in cat_counts], ensure_ascii=False)
+    cats_json = json.dumps(cat_order, ensure_ascii=False)
 
-    id_tokens = ""
-    for label, vals in [("name", d.names[:5]), ("mail", d.emails),
-                        ("link", d.external_links[:10])]:
-        cls = "name" if label == "name" else label
-        for v in vals:
-            id_tokens += f'<span class="tok {_esc(cls)}">{_esc(v)}</span>'
-    if not id_tokens:
-        id_tokens = '<span style="color:var(--dim)">No identity signals extracted.</span>'
+    def id_tok(label, vals, cls=None):
+        if not vals:
+            return ""
+        html_cls = cls or label
+        return "".join(
+            f'<span class="tok {_esc(html_cls)}">{_esc(v)}</span>'
+            for v in vals
+        )
 
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+    id_names = id_tok("name", d.names[:6])
+    id_emails = id_tok("mail", d.emails)
+    id_links = id_tok("link", d.external_links[:10])
+    id_rows = ""
+    for label, vals, cls in [("names", d.names[:6], "name"),
+                              ("emails", d.emails, "mail"),
+                              ("links", d.external_links[:10], "link")]:
+        toks = id_tok(label, vals, cls)
+        if toks:
+            id_rows += f'<div class="idrow"><span class="tag">{_esc(label)}</span><span class="vals">{toks}</span></div>'
+    if not id_rows:
+        id_rows = '<div class="idrow"><span class="tag">identity</span><span class="none">No identity signals extracted.</span></div>'
+
+    verdict_detail = f"{n} verified accounts across {len(cat_order)} categories"
+    extras = []
+    if email_count:
+        extras.append(f"{email_count} email{'s' if email_count>1 else ''}")
+    if same_face:
+        extras.append(f"{same_face} reused avatar{'s' if same_face>1 else ''}")
+    if extras:
+        verdict_detail += f". {', '.join(extras)} found."
+
+    from argis import __version__ as argis_ver
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ARGIS // dossier @{_esc(d.username)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -218,174 +259,214 @@ def to_html_report(dossier: Dossier, *, graph_payload: dict | None = None) -> st
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
 :root{{
-  --bg:oklch(16% 0.02 265); --bg-2:oklch(19% 0.025 265); --panel:oklch(21% 0.03 265);
-  --line:oklch(30% 0.035 265); --line-hot:oklch(38% 0.05 265);
-  --dim:oklch(58% 0.03 210); --txt:oklch(88% 0.03 175); --txt-hi:oklch(94% 0.02 160);
-  --green:oklch(84% 0.19 148); --green-d:oklch(62% 0.17 150);
-  --cyan:oklch(82% 0.14 200); --amber:oklch(83% 0.15 82); --red:oklch(70% 0.2 25);
-  --magenta:oklch(74% 0.17 330); --violet:oklch(75% 0.13 285);
+  --bg:oklch(15% 0.018 262); --bg-2:oklch(18.5% 0.022 262); --panel:oklch(21% 0.028 262);
+  --line:oklch(28% 0.03 262); --line-hot:oklch(37% 0.045 262);
+  --dim:oklch(60% 0.028 220); --txt:oklch(89% 0.028 175); --txt-hi:oklch(95% 0.02 160);
+  --green:oklch(84% 0.19 148); --green-d:oklch(60% 0.16 150);
+  --cyan:oklch(82% 0.13 205); --amber:oklch(84% 0.15 82); --red:oklch(68% 0.19 24);
+  --magenta:oklch(74% 0.16 330); --violet:oklch(76% 0.12 288);
   --c-coding:var(--cyan); --c-social:var(--magenta); --c-media:var(--red);
   --c-creative:var(--violet); --c-blogging:var(--green); --c-gaming:var(--amber);
-  --c-funding:oklch(80% 0.13 55);
+  --c-security:oklch(80% 0.13 55); --c-messaging:oklch(78% 0.11 235);
+  --c-finance:oklch(82% 0.16 145); --c-education:oklch(80% 0.12 100);
   --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;--sp-7:48px;--sp-8:72px;
-  --ease:cubic-bezier(0.22,1,0.36,1); --glow:0 0 12px oklch(84% 0.19 148 / .35);
+  --ease:cubic-bezier(0.22,1,0.36,1); --glow:0 0 14px oklch(84% 0.19 148 / .32);
 }}
 *{{box-sizing:border-box;}} html{{-webkit-text-size-adjust:100%;}}
 body{{margin:0; background:var(--bg); color:var(--txt);
-  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:14px; line-height:1.6;
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:13.5px; line-height:1.6;
   letter-spacing:.01em; -webkit-font-smoothing:antialiased;}}
 body::before{{content:""; position:fixed; inset:0; pointer-events:none; z-index:999;
-  background:repeating-linear-gradient(oklch(16% 0.02 265 / 0) 0 2px, oklch(10% 0.02 265 / .22) 2px 3px);
-  mix-blend-mode:multiply;}}
+  background:repeating-linear-gradient(oklch(15% 0.018 262 / 0) 0 2.5px, oklch(9% 0.02 262 / .18) 2.5px 4px);
+  mix-blend-mode:multiply; opacity:.7;}}
 body::after{{content:""; position:fixed; inset:0; pointer-events:none; z-index:998;
-  background:radial-gradient(120% 90% at 50% 0%, transparent 55%, oklch(10% 0.02 265 / .55));}}
+  background:radial-gradient(130% 100% at 50% -10%, transparent 52%, oklch(9% 0.02 262 / .6));}}
 a{{color:inherit; text-decoration:none;}}
 h1,h2,h3{{margin:0; font-weight:700;}} p{{margin:0;}}
 ::selection{{background:var(--green); color:var(--bg);}}
-.wrap{{max-width:1060px; margin:0 auto; padding:0 var(--sp-5);}}
-.cur{{display:inline-block; width:.6em; height:1.05em; background:var(--green);
-  transform:translateY(.16em); margin-left:2px; animation:blink 1.1s steps(1) infinite; box-shadow:var(--glow);}}
+.wrap{{max-width:1080px; margin:0 auto; padding:0 var(--sp-5);}}
+.cur{{display:inline-block; width:.55em; height:1em; background:var(--green);
+  transform:translateY(.14em); margin-left:3px; animation:blink 1.1s steps(1) infinite; box-shadow:var(--glow);}}
 @keyframes blink{{50%{{opacity:0;}}}}
+
 .boot{{padding:var(--sp-7) 0 var(--sp-5); border-bottom:1px solid var(--line);}}
-.boot .line{{color:var(--dim); font-size:12.5px; white-space:pre; overflow:hidden;}}
-.boot .line b{{color:var(--green); font-weight:500;}}
+.boot .line{{color:var(--dim); font-size:12px; white-space:pre; overflow:hidden;
+  animation:type .5s var(--ease) both; animation-delay:calc(var(--l,0)*90ms);}}
+@keyframes type{{from{{opacity:0; transform:translateX(-8px);}}to{{opacity:1; transform:none;}}}}
+.boot .line b{{color:var(--txt-hi); font-weight:500;}}
 .boot .line .ok{{color:var(--green);}} .boot .line .warn{{color:var(--amber);}}
-.logo{{margin:var(--sp-5) 0 var(--sp-4); color:var(--green); font-weight:800;
-  font-size:clamp(10px,2.4vw,15px); line-height:1.1; text-shadow:var(--glow); white-space:pre; overflow-x:auto;}}
-.tagline{{display:flex; gap:var(--sp-4); flex-wrap:wrap; align-items:baseline; color:var(--dim); font-size:12.5px;}}
-.tagline .tgt{{color:var(--txt-hi);}} .tagline .tgt b{{color:var(--green); font-weight:700;}}
-.prompt{{display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-4) 0;
-  color:var(--dim); font-size:13px; border-bottom:1px solid var(--line); flex-wrap:wrap;}}
+.head{{display:flex; justify-content:space-between; align-items:flex-end; gap:var(--sp-5);
+  margin:var(--sp-6) 0 var(--sp-4); flex-wrap:wrap;}}
+.logo{{color:var(--green); font-weight:800; font-size:clamp(9px,2vw,13px); line-height:1.08;
+  text-shadow:var(--glow); white-space:pre;}}
+.tgtbox{{text-align:right; font-size:12px; color:var(--dim);}}
+.tgtbox .big{{color:var(--txt-hi); font-size:1.5rem; font-weight:800; letter-spacing:-.01em;}}
+.tgtbox .big .at{{color:var(--green);}}
+
+.prompt{{display:flex; align-items:center; gap:10px; padding:var(--sp-4) 0;
+  color:var(--dim); font-size:12.5px; border-bottom:1px solid var(--line); flex-wrap:wrap;}}
 .prompt .usr{{color:var(--green);}} .prompt .path{{color:var(--cyan);}} .prompt .cmd{{color:var(--txt-hi);}}
+
+.verdict{{display:flex; align-items:center; gap:var(--sp-4); margin:var(--sp-6) 0;
+  padding:var(--sp-4) var(--sp-5); border:1px solid var(--green-d); background:var(--bg-2);
+  box-shadow:inset 0 0 40px oklch(84% 0.19 148 / .04);}}
+.verdict .mark{{font-size:1.5rem; color:var(--green); text-shadow:var(--glow);}}
+.verdict .txt{{font-size:12.5px; color:var(--dim);}} .verdict .txt b{{color:var(--txt-hi);}}
+
 .strip{{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line);
-  border:1px solid var(--line); margin:var(--sp-6) 0;}}
-.stat{{background:var(--bg-2); padding:var(--sp-4);}}
-.stat .k{{color:var(--dim); font-size:11px; letter-spacing:.12em; text-transform:uppercase;}}
-.stat .v{{font-size:1.9rem; font-weight:800; margin-top:var(--sp-1); font-variant-numeric:tabular-nums; line-height:1;}}
+  border:1px solid var(--line); margin:var(--sp-5) 0;}}
+.stat{{background:var(--bg-2); padding:var(--sp-4) var(--sp-5); position:relative; overflow:hidden;}}
+.stat::after{{content:""; position:absolute; left:0; bottom:0; height:2px; width:var(--w,0%);
+  background:var(--ac,var(--green)); opacity:.5; transition:width 1s var(--ease);}}
+.stat .k{{color:var(--dim); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;}}
+.stat .v{{font-size:2.1rem; font-weight:800; margin-top:6px; font-variant-numeric:tabular-nums; line-height:1;}}
 .stat .v.g{{color:var(--green); text-shadow:var(--glow);}} .stat .v.c{{color:var(--cyan);}}
-.stat .v.a{{color:var(--amber);}} .stat .v.r{{color:var(--red);}}
-.stat .sub{{color:var(--dim); font-size:11.5px; margin-top:var(--sp-2);}}
+.stat .v.a{{color:var(--amber);}} .stat .v.m{{color:var(--magenta);}}
+.stat .sub{{color:var(--dim); font-size:11px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}}
+
 .sec{{padding:var(--sp-6) 0;}}
 .sec-h{{display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-5);
-  color:var(--green); font-size:12.5px; letter-spacing:.14em; text-transform:uppercase;}}
-.sec-h::before{{content:"[";color:var(--dim);}} .sec-h::after{{content:"]";color:var(--dim);}}
-.sec-h .fill{{flex:1; height:1px; background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 12px);}}
-.sec-note{{color:var(--dim); font-size:11.5px; margin:-14px 0 var(--sp-5); text-transform:none; letter-spacing:0;}}
-.faces{{display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:var(--sp-3);}}
+  color:var(--green); font-size:12px; letter-spacing:.16em; text-transform:uppercase;}}
+.sec-h::before{{content:"["; color:var(--dim);}} .sec-h::after{{content:"]"; color:var(--dim);}}
+.sec-h .fill{{flex:1; height:1px; background:repeating-linear-gradient(90deg,var(--line) 0 5px,transparent 5px 11px);}}
+.sec-note{{color:var(--dim); font-size:11px; margin:-14px 0 var(--sp-5);}}
+
+.faces{{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px;}}
 .face{{position:relative; border:1px solid var(--line-hot); background:var(--bg-2); overflow:hidden;
-  aspect-ratio:1; animation:flick .5s var(--ease) both; animation-delay:calc(var(--i,0)*40ms);}}
+  aspect-ratio:1; animation:flick .5s var(--ease) both; animation-delay:calc(var(--i,0)*45ms);}}
 .face img{{width:100%; height:100%; object-fit:cover; display:block;
-  filter:grayscale(.35) contrast(1.05); transition:filter .25s var(--ease), transform .4s var(--ease);}}
-.face:hover img{{filter:none; transform:scale(1.05);}}
+  filter:grayscale(.4) contrast(1.06) brightness(.95); transition:filter .3s var(--ease), transform .5s var(--ease);}}
+.face:hover img{{filter:none; transform:scale(1.06);}}
 .face .scan{{position:absolute; inset:0; pointer-events:none;
-  background:linear-gradient(oklch(84% 0.19 148 / 0) 0 2px, oklch(84% 0.19 148 / .06) 2px 4px);}}
-.face .cap{{position:absolute; left:0; right:0; bottom:0; padding:5px 7px;
-  background:linear-gradient(transparent, oklch(12% 0.02 265 / .92));
-  font-size:10.5px; color:var(--txt-hi); display:flex; justify-content:space-between; align-items:center; gap:4px;}}
-.face .cap .pf{{font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}}
-.face .badge{{position:absolute; top:5px; left:5px; font-size:8.5px; letter-spacing:.08em;
-  background:oklch(12% 0.02 265 / .8); color:var(--cyan); padding:2px 5px; text-transform:uppercase;}}
-.dist{{display:grid; gap:var(--sp-2); max-width:660px;}}
-.drow{{display:grid; grid-template-columns:120px 1fr 46px; gap:var(--sp-4); align-items:center;
-  cursor:pointer; padding:2px 0; transition:opacity .2s var(--ease);}}
-.drow .lbl{{font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; display:flex; gap:8px; align-items:center;}}
-.drow .lbl::before{{content:""; width:8px; height:8px; background:var(--cc); box-shadow:0 0 8px var(--cc);}}
-.bar{{color:var(--cc); white-space:pre; font-size:13px; letter-spacing:-1px; overflow:hidden;}}
+  background:linear-gradient(oklch(84% 0.19 148 / 0) 0 2px, oklch(84% 0.19 148 / .05) 2px 4px);}}
+.face .cap{{position:absolute; inset:auto 0 0 0; padding:6px 8px;
+  background:linear-gradient(transparent, oklch(11% 0.02 262 / .94)); font-size:10px;
+  color:var(--txt-hi); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}}
+.face .badge{{position:absolute; top:6px; left:6px; font-size:8px; letter-spacing:.09em;
+  background:oklch(11% 0.02 262 / .82); color:var(--cyan); padding:2px 6px; text-transform:uppercase;}}
+.face .link{{position:absolute; top:6px; right:6px; width:16px; height:16px; display:grid; place-items:center;
+  background:oklch(11% 0.02 262 / .82); color:var(--green); font-size:10px; opacity:0; transition:opacity .2s var(--ease);}}
+.face:hover .link{{opacity:1;}}
+
+.dist{{display:grid; gap:6px; max-width:680px;}}
+.drow{{display:grid; grid-template-columns:128px 1fr 34px; gap:var(--sp-4); align-items:center;
+  cursor:pointer; padding:3px 0; transition:opacity .2s var(--ease);}}
+.drow .lbl{{font-size:12px; text-transform:uppercase; letter-spacing:.05em; display:flex; gap:9px; align-items:center;}}
+.drow .lbl::before{{content:""; width:8px; height:8px; background:var(--cc); box-shadow:0 0 8px var(--cc); flex:0 0 auto;}}
+.bar{{color:var(--cc); white-space:pre; font-size:12px; letter-spacing:-1.5px; overflow:hidden;}}
 .drow .n{{color:var(--txt-hi); text-align:right; font-variant-numeric:tabular-nums; font-weight:700;}}
-.drow[aria-pressed="false"]{{opacity:.32;}} .drow[aria-pressed="false"] .lbl::before{{box-shadow:none;}}
-.idgrid{{display:grid; gap:var(--sp-3);}}
-.idrow{{display:grid; grid-template-columns:110px 1fr; gap:var(--sp-4); align-items:start;}}
-.idrow .tag{{color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.1em; padding-top:4px;}}
-.idrow .vals{{display:flex; flex-wrap:wrap; gap:var(--sp-2);}}
-.tok{{border:1px solid var(--line-hot); background:var(--bg-2); padding:3px 10px; font-size:12.5px;
-  color:var(--txt); display:inline-flex; align-items:center; gap:6px;
+.drow[aria-pressed="false"]{{opacity:.3;}} .drow[aria-pressed="false"] .lbl::before{{box-shadow:none;}}
+
+.idgrid{{display:grid; gap:var(--sp-4);}}
+.idrow{{display:grid; grid-template-columns:96px 1fr; gap:var(--sp-4); align-items:start;}}
+.idrow .tag{{color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.1em; padding-top:5px;}}
+.idrow .vals{{display:flex; flex-wrap:wrap; gap:8px;}}
+.tok{{border:1px solid var(--line-hot); background:var(--bg-2); padding:4px 11px; font-size:12px;
+  color:var(--txt); display:inline-flex; align-items:center; gap:7px;
   transition:border-color .18s var(--ease), color .18s var(--ease), box-shadow .18s var(--ease);}}
 .tok:hover{{border-color:var(--green-d); color:var(--txt-hi); box-shadow:var(--glow);}}
-.tok.mail{{color:var(--amber);}} .tok.mail::before{{content:"@"; color:var(--dim);}}
-.tok.link::before{{content:"\u2197"; color:var(--cyan);}}
-.tok.name{{color:var(--green); border-color:var(--green-d);}}
-.controls{{display:flex; gap:var(--sp-3); align-items:center; flex-wrap:wrap; margin-bottom:var(--sp-5);}}
-.grep{{flex:1 1 240px; min-width:190px; display:flex; align-items:center; gap:var(--sp-2);
+.tok.mail{{color:var(--amber);}} .tok.mail::before{{content:"\\2709"; color:var(--dim);}}
+.tok.link::before{{content:"\\2197"; color:var(--cyan);}}
+.tok.name{{color:var(--green); border-color:var(--green-d); font-weight:500;}}
+.idrow .none{{color:var(--dim); font-style:italic; font-size:11.5px; padding-top:4px;}}
+
+.controls{{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:var(--sp-5);}}
+.grep{{flex:1 1 240px; min-width:200px; display:flex; align-items:center; gap:8px;
   border:1px solid var(--line-hot); background:var(--bg-2); padding:0 var(--sp-3);}}
 .grep .sig{{color:var(--green);}}
 .grep input{{flex:1; background:transparent; border:none; outline:none; color:var(--txt-hi);
-  font-family:inherit; font-size:13px; padding:9px 0;}}
+  font-family:inherit; font-size:12.5px; padding:10px 0;}}
 .grep input::placeholder{{color:var(--dim);}}
 .grep:focus-within{{border-color:var(--green-d); box-shadow:var(--glow);}}
-.flag{{font-family:inherit; font-size:12px; padding:6px 11px; cursor:pointer; border:1px solid var(--line-hot);
+.flag{{font-family:inherit; font-size:11.5px; padding:7px 12px; cursor:pointer; border:1px solid var(--line-hot);
   background:var(--bg-2); color:var(--dim); text-transform:lowercase; transition:all .18s var(--ease);}}
-.flag::before{{content:"--"; opacity:.6; margin-right:2px;}}
-.flag:hover{{color:var(--txt);}}
+.flag::before{{content:"--"; opacity:.55; margin-right:2px;}}
+.flag:hover{{color:var(--txt); border-color:var(--dim);}}
 .flag[aria-pressed="true"]{{color:var(--bg); background:var(--green); border-color:var(--green); font-weight:700;}}
+.flag[aria-pressed="true"]::before{{opacity:.5;}}
+
 .grp{{margin-bottom:var(--sp-5);}} .grp.hidden{{display:none;}}
-.grp-h{{display:flex; align-items:center; gap:var(--sp-3); color:var(--cc); font-size:12px;
-  letter-spacing:.08em; text-transform:uppercase; margin-bottom:var(--sp-2); padding-bottom:6px;
+.grp-h{{display:flex; align-items:center; gap:10px; color:var(--cc); font-size:11.5px;
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px; padding-bottom:7px;
   border-bottom:1px dashed var(--line-hot);}}
 .grp-h .cnt{{margin-left:auto; color:var(--dim); font-variant-numeric:tabular-nums;}}
-.row{{display:grid; grid-template-columns:38px 26px 140px 1fr 20px; gap:var(--sp-3); align-items:center;
-  padding:8px var(--sp-3); border-left:2px solid transparent; position:relative;
+.row{{display:grid; grid-template-columns:36px 30px 148px 1fr 18px; gap:var(--sp-3); align-items:center;
+  padding:9px var(--sp-3); border-left:2px solid transparent;
   transition:background .16s var(--ease), border-color .16s var(--ease);
-  animation:flick .5s var(--ease) both; animation-delay:calc(var(--i,0)*26ms);}}
+  animation:flick .5s var(--ease) both; animation-delay:calc(var(--i,0)*22ms);}}
 @keyframes flick{{from{{opacity:0; transform:translateX(-6px);}}to{{opacity:1; transform:none;}}}}
-.row:hover{{background:var(--bg-2);}} .row:hover{{border-left-color:var(--cc);}}
-.pfp{{width:34px; height:34px; border:1px solid var(--line-hot); object-fit:cover; display:block;
-  filter:grayscale(.4) contrast(1.05); transition:filter .2s var(--ease);}}
+.row:hover{{background:var(--bg-2); border-left-color:var(--cc);}}
+.pfp{{width:32px; height:32px; border:1px solid var(--line-hot); object-fit:cover; display:block;
+  filter:grayscale(.45) contrast(1.05); transition:filter .2s var(--ease);}}
 .row:hover .pfp{{filter:none;}}
-.pfp-ph{{width:34px; height:34px; border:1px solid var(--line-hot); display:grid; place-items:center;
-  font-weight:800; font-size:13px; color:var(--bg);}}
-.row .st{{color:var(--green); font-size:12px; font-weight:700;}}
-.row .plat{{color:var(--txt-hi); font-weight:700; font-size:13px;}}
-.row .meta{{color:var(--dim); font-size:12.5px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}}
+.pfp-ph{{width:32px; height:32px; border:1px solid var(--line-hot); display:grid; place-items:center;
+  font-weight:800; font-size:12px; color:var(--bg);}}
+.row .st{{color:var(--green); font-size:11.5px; font-weight:700;}}
+.row .plat{{color:var(--txt-hi); font-weight:700; font-size:12.5px;}}
+.row .meta{{color:var(--dim); font-size:12px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}}
 .row .meta b{{color:var(--txt); font-weight:500;}} .row .meta .m{{color:var(--amber);}}
 .row .go{{color:var(--line-hot); text-align:right; transition:color .16s var(--ease), transform .2s var(--ease);}}
 .row:hover .go{{color:var(--cc); transform:translateX(2px);}}
+
 .empty{{display:none; padding:var(--sp-7); text-align:center; border:1px dashed var(--line-hot); color:var(--dim);}}
 .empty.show{{display:block;}} .empty b{{color:var(--red);}}
-.foot{{padding:var(--sp-6) 0 var(--sp-8); border-top:1px solid var(--line); color:var(--dim); font-size:12px;
+
+.foot{{padding:var(--sp-6) 0 var(--sp-8); border-top:1px solid var(--line); color:var(--dim); font-size:11.5px;
   display:flex; justify-content:space-between; gap:var(--sp-4); flex-wrap:wrap;}}
 .foot .ok{{color:var(--green);}}
+
 @media (max-width:680px){{
   .strip{{grid-template-columns:repeat(2,1fr);}}
-  .row{{grid-template-columns:34px 1fr 18px; row-gap:2px;}}
+  .head{{flex-direction:column; align-items:flex-start;}} .tgtbox{{text-align:left;}}
+  .row{{grid-template-columns:32px 1fr 16px; row-gap:3px;}}
   .row .st{{display:none;}} .row .plat{{grid-column:2/4;}} .row .meta{{grid-column:2/4;}}
-  .drow{{grid-template-columns:96px 1fr 34px;}} .bar{{font-size:11px;}}
+  .drow{{grid-template-columns:100px 1fr 30px;}} .bar{{font-size:10px;}}
 }}
 @media (prefers-reduced-motion:reduce){{*{{animation:none!important;}}.cur{{animation:none;}}}}
 </style>
-</head><body><div class="wrap">
+</head>
+<body>
+<div class="wrap">
 
 <header class="boot">
-  <div class="line"><span class="ok">\u2713</span> argis engine <b>v0.5.0</b> online \u00b7 http/2 \u00b7 30 workers</div>
-  <div class="line"><span class="ok">\u2713</span> sites.json loaded \u00b7 <b>133</b> rules \u00b7 integrity <span class="ok">verified</span></div>
-  <div class="line"><span class="ok">\u2713</span> media pipeline \u00b7 <b>{with_avatar}</b> avatars fetched \u00b7 perceptual-hashed</div>
-  <pre class="logo">
- \u2588\u2588\u2588\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588
-\u2588\u2588\u2595\u2595\u2595\u2595\u2588\u2588\u2588\u2588\u2595\u2595\u2595\u2595\u2588\u2588\u2588\u2588\u2595\u2595\u2595\u2595\u2595 \u2588\u2588\u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595
-\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2595\u2595\u2588\u2588\u2588\u2588  \u2588\u2588\u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595
-\u2588\u2588\u2595\u2595\u2595\u2595\u2588\u2588\u2588\u2588\u2595\u2595\u2595\u2595\u2588\u2588\u2588\u2588   \u2588\u2588\u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595
-\u2588\u2588  \u2588\u2588\u2588\u2588  \u2588\u2588  \u2595\u2595\u2588\u2588\u2588\u2588\u2588\u2588\u2595\u2595\u2588\u2588\u2588\u2588\u2588\u2588\u2588
-\u2595\u2595  \u2595\u2595\u2595\u2595  \u2595\u2595  \u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595 \u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595\u2595</pre>
-  <div class="tagline">
-    <span>the all-seeing osint scanner</span>
-    <span class="tgt">target \u27f6 <b>@{_esc(d.username)}</b><span class="cur"></span></span>
+  <div class="line" style="--l:0"><span class="ok">\u2713</span> argis <b>v{argis_ver}</b> \u00b7 http/2 \u00b7 30 workers</div>
+  <div class="line" style="--l:1"><span class="ok">\u2713</span> sites.json \u00b7 <b>{d.total_scanned}</b> rules \u00b7 integrity <span class="ok">verified</span></div>
+  <div class="line" style="--l:2"><span class="ok">\u2713</span> media pipeline \u00b7 <b>{with_avatar}</b> avatars fetched \u00b7 perceptual-hashed</div>
+
+  <div class="head">
+    <pre class="logo"> \\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588 \\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588  \\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588 \\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588
+\\u2588\\u2588\\u2595\\u2595\\u2595\\u2595\\u2588\\u2588\\u2588\\u2588\\u2595\\u2595\\u2595\\u2595\\u2588\\u2588\\u2588\\u2588\\u2595\\u2595\\u2595\\u2595\\u2595 \\u2588\\u2588\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595
+\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2595\\u2595\\u2588\\u2588\\u2588\\u2588  \\u2588\\u2588\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595
+\\u2588\\u2588\\u2595\\u2595\\u2595\\u2595\\u2588\\u2588\\u2588\\u2588\\u2595\\u2595\\u2595\\u2595\\u2588\\u2588\\u2588\\u2588   \\u2588\\u2588\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595
+\\u2588\\u2588  \\u2588\\u2588\\u2588\\u2588  \\u2588\\u2588  \\u2595\\u2595\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2595\\u2595\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588\\u2588
+\\u2595\\u2595  \\u2595\\u2595\\u2595\\u2595  \\u2595\\u2595  \\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595 \\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595\\u2595</pre>
+    <div class="tgtbox">
+      <div class="big"><span class="at">@</span>{_esc(d.username)}<span class="cur"></span></div>
+      {_esc(d.generated_at)}<br>{n} verified / {d.total_scanned} scanned
+    </div>
   </div>
 </header>
 
 <div class="prompt">
-  <span class="usr">root@argis</span><span>:</span><span class="path">~/scans</span><span>$</span>
-  <span class="cmd">argis scan {_esc(d.username)} --dossier --grab-avatars --all</span>
+  <span class="usr">root@argis</span>:<span class="path">~/scans</span>$
+  <span class="cmd">argis scan {_esc(d.username)} --dossier --grab-avatars{'' if n==0 else ''}</span>
+</div>
+
+<div class="verdict">
+  <span class="mark">\u2713</span>
+  <span class="txt"><b>{n} verified accounts</b> across {len(cat_order)} life-areas. {verdict_detail}</span>
 </div>
 
 <div class="strip">
-  <div class="stat"><div class="k">Hits</div><div class="v g">{n}</div><div class="sub">/ {d.total_scanned} scanned</div></div>
-  <div class="stat"><div class="k">Avatars</div><div class="v c">{with_avatar}</div><div class="sub">images captured</div></div>
-  <div class="stat"><div class="k">Emails</div><div class="v a">{email_count}</div><div class="sub">leaked in profiles</div></div>
-  <div class="stat"><div class="k">Real name</div><div class="v r">{len(d.names)}\u00d7</div><div class="sub">{_esc(top_name)}</div></div>
+  {f'<div class="stat" style="--w:{n/max(d.total_scanned,1)*100:.0f}%;--ac:var(--green)"><div class="k">Verified hits</div><div class="v g">{n}</div><div class="sub">of {d.total_scanned} scanned</div></div>' if n else '<div class="stat" style="--ac:var(--green)"><div class="k">Verified hits</div><div class="v g">0</div><div class="sub">of {d.total_scanned} scanned</div></div>'}
+  {f'<div class="stat" style="--w:{with_avatar/max(n,1)*100:.0f}%;--ac:var(--cyan)"><div class="k">Avatars</div><div class="v c">{with_avatar}</div><div class="sub">images captured</div></div>' if n else '<div class="stat" style="--ac:var(--cyan)"><div class="k">Avatars</div><div class="v c">0</div><div class="sub">images captured</div></div>'}
+  {f'<div class="stat" style="--w:{min(email_count,1)*100:.0f}%;--ac:var(--amber)"><div class="k">Emails</div><div class="v a">{email_count}</div><div class="sub">self-published</div></div>' if email_count else '<div class="stat" style="--ac:var(--amber)"><div class="k">Emails</div><div class="v a">0</div><div class="sub">self-published</div></div>'}
+  {f'<div class="stat" style="--w:{same_face/max(n,1)*100:.0f}%;--ac:var(--magenta)"><div class="k">Same face</div><div class="v m">{same_face}\u00d7</div><div class="sub">avatar reused</div></div>' if n else '<div class="stat" style="--ac:var(--magenta)"><div class="k">Same face</div><div class="v m">0</div><div class="sub">avatar reused</div></div>'}
 </div>
 
 <section class="sec">
   <div class="sec-h">captured_media<span class="fill"></span></div>
-  <div class="sec-note">profile photos pulled from each hit and perceptual-hashed. matching hashes = same image reused across platforms (a hard cross-link).</div>
+  <div class="sec-note">avatars pulled per hit and perceptual-hashed. matching hashes = same image reused across platforms (a hard cross-link).</div>
   <div class="faces" id="faces"></div>
 </section>
 
@@ -396,9 +477,7 @@ h1,h2,h3{{margin:0; font-weight:700;}} p{{margin:0;}}
 
 <section class="sec">
   <div class="sec-h">extracted_identity<span class="fill"></span></div>
-  <div class="idgrid">
-    <div class="idrow"><span class="tag">names</span><span class="vals">{id_tokens}</span></div>
-  </div>
+  <div class="idgrid">{id_rows}</div>
 </section>
 
 <section class="sec">
@@ -407,14 +486,14 @@ h1,h2,h3{{margin:0; font-weight:700;}} p{{margin:0;}}
     <label class="grep"><span class="sig">grep&gt;</span>
       <input id="q" type="text" placeholder="filter platform / name / bio\u2026" aria-label="Filter accounts"></label>
     <button class="flag" data-cat="all" aria-pressed="true">all</button>
-    {"".join(f'<button class="flag" data-cat="{_esc(c)}" aria-pressed="true">{_esc(c)}</button>' for c in cat_order if c in cat_counts)}
+    {"".join(f'<button class="flag" data-cat="{_esc(c)}" aria-pressed="true">{_esc(c)}</button>' for c in cat_order)}
   </div>
   <div id="groups"></div>
-  <div class="empty" id="empty">no matches &mdash; <b>0 results</b>. clear grep or re-enable a flag.</div>
+  <div class="empty" id="empty">no matches \u2014 <b>0 results</b>. clear grep or re-enable a flag.</div>
 </section>
 
 <footer class="foot">
-  <span><span class="ok">\u2713</span> scan complete \u00b7 {_esc(d.generated_at)}</span>
+  <span><span class="ok">\u2713</span> scan complete \u00b7 {n} verified / {d.total_scanned} scanned</span>
   <span>public signals only \u00b7 defensive / self-osint \u00b7 no deanonymization</span>
 </footer>
 
@@ -423,48 +502,49 @@ h1,h2,h3{{margin:0; font-weight:700;}} p{{margin:0;}}
 <script>
 const DATA = {json_data};
 const CAT = {cats_json};
-const VAR = {{"coding":"--c-coding","social":"--c-social","media":"--c-media","creative":"--c-creative","blogging":"--c-blogging","gaming":"--c-gaming","funding":"--c-funding"}};
+const VAR = {{{{c}}:"--c-{_esc(c)}" for c in cat_order}};
 const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-function initials(str){{const c=str.replace(/^u\\//,"").replace(/[@_.]/g," ").trim().split(/\\s+/);
+function initials(s){{const c=s.replace(/^u\\//,"").replace(/[@_.]/g," ").trim().split(/\\s+/);
   return c.length>=2?(c[0][0]+c[1][0]).toUpperCase():c[0].slice(0,2).toUpperCase();}}
 
-/* captured faces gallery */
+/* faces */
 const faces=document.getElementById("faces"); let fi=0;
 DATA.filter(d=>d.img).forEach(d=>{{
   const col=cssv(VAR[d.cat]);
   const el=document.createElement("a");
   el.className="face"; el.href=d.url; el.target="_blank"; el.rel="noopener"; el.style.setProperty("--i",fi++);
-  el.innerHTML=`<img src="${{d.img}}" alt="${{d.p}} avatar" loading="lazy">
-    <div class="scan"></div>
-    <div class="badge">${{d.p}}</div>
-    <div class="cap"><span class="pf">${{d.name||d.p}}</span></div>`;
+  el.innerHTML=`<img src="${{d.img}}" alt="${{d.p}} avatar" loading="lazy"
+    onerror="this.replaceWith(Object.assign(document.createElement('div'),{{className:'noimg',style:'width:100%;height:100%;display:grid;place-items:center;font-weight:800;font-size:1.6rem;color:var(--bg);background:${{col}}',textContent:'${{initials(d.name||d.p)}}'}}))">
+    <div class="scan"></div><div class="badge">${{d.p}}</div><div class="link">\u2197</div>
+    <div class="cap">${{d.name||d.p}}</div>`;
   faces.appendChild(el);
 }});
 
 /* distribution */
-const counts={{}}; CAT.forEach(c=>counts[c]=DATA.filter(d=>d.cat===c).length);
+const counts={{{{}}}}; CAT.forEach(c=>counts[c]=DATA.filter(d=>d.cat===c).length);
 const maxc=Math.max(...Object.values(counts),1);
 const dist=document.getElementById("dist");
-CAT.forEach(c=>{{const col=cssv(VAR[c]); const u=Math.round(counts[c]/maxc*22);
-  const bar="\\u2588".repeat(u)+"\\u2591".repeat(22-u);
+CAT.forEach(c=>{{const col=cssv(VAR[c]); const u=Math.round(counts[c]/maxc*24);
+  const bar="\\u2588".repeat(u)+"\\u2591".repeat(24-u);
   const row=document.createElement("div"); row.className="drow"; row.dataset.cat=c;
   row.setAttribute("role","button"); row.setAttribute("aria-pressed","true"); row.style.setProperty("--cc",col);
   row.innerHTML=`<span class="lbl">${{c}}</span><span class="bar">${{bar}}</span><span class="n">${{counts[c]}}</span>`;
   row.addEventListener("click",()=>toggle(c)); dist.appendChild(row);}});
 
-/* account rows w/ pfp */
+/* accounts */
 const groupsEl=document.getElementById("groups"); let gi=0;
 CAT.forEach(c=>{{const items=DATA.filter(d=>d.cat===c); if(!items.length) return;
   const col=cssv(VAR[c]); let rows="";
   items.forEach(d=>{{
     const nm=d.name?`<b>${{d.name}}</b>`:""; const bio=d.bio?` \\u00b7 ${{d.bio}}`:"";
     const mail=d.mail?` \\u00b7 <span class="m">${{d.mail}}</span>`:"";
-    const pfp=d.img?`<img class="pfp" src="${{d.img}}" alt="" loading="lazy">`
+    const pfp=d.img
+      ?`<img class="pfp" src="${{d.img}}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{{className:'pfp-ph',style:'background:${{col}}',textContent:'${{initials(d.name||d.p)}}'}}))">`
       :`<span class="pfp-ph" style="background:${{col}}">${{initials(d.name||d.p)}}</span>`;
     rows+=`<a class="row" href="${{d.url}}" target="_blank" rel="noopener" style="--i:${{gi++}};--cc:${{col}}"
-        data-hay="${{(d.p+' '+d.name+' '+d.bio).toLowerCase()}}">
-        ${{pfp}}<span class="st">200</span><span class="plat">${{d.p}}</span>
-        <span class="meta">${{nm}}${{bio}}${{mail}}</span><span class="go">\u2192</span></a>`;}});
+      data-hay="${{(d.p+' '+d.name+' '+d.bio).toLowerCase()}}">
+      ${{pfp}}<span class="st">200</span><span class="plat">${{d.p}}</span>
+      <span class="meta">${{nm}}${{bio}}${{mail}}</span><span class="go">\u2192</span></a>`;}});
   const g=document.createElement("div"); g.className="grp"; g.dataset.cat=c;
   g.innerHTML=`<div class="grp-h" style="--cc:${{col}};color:${{col}}">${{c}}<span class="cnt">${{items.length}} found</span></div>${{rows}}`;
   groupsEl.appendChild(g);}});
