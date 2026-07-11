@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import csv
+import html as htmlmod
 import json
-from io import StringIO
+import zipfile
+from io import BytesIO, StringIO
 from pathlib import Path
 
 import httpx
@@ -105,11 +107,165 @@ def to_html(results: dict[str, dict], username: str) -> str:
 </html>"""
 
 
+def to_txt(results: dict, username: str) -> str:
+    lines = [f"Argis scan results for @{username}", "=" * 40, ""]
+    found = {p: r for p, r in sorted(results.items()) if r.get("status") == "FOUND"}
+    lines.append(f"Found: {len(found)} / {len(results)} platforms\n")
+    for p, r in found.items():
+        conf = r.get("confidence", "?")
+        lines.append(f"[{conf}%] {p}")
+        lines.append(f"  URL: {r['url']}")
+        if r.get("title"):
+            lines.append(f"  Title: {r['title']}")
+        if r.get("emails"):
+            lines.append(f"  Emails: {', '.join(r['emails'])}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def to_ndjson(results: dict, username: str) -> str:
+    lines = []
+    for name, info in sorted(results.items()):
+        entry = {"username": username, "platform": name, **info}
+        lines.append(json.dumps(entry, ensure_ascii=False))
+    return "\n".join(lines)
+
+
+def _xml_esc(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def to_xmind(results: dict, username: str) -> bytes:
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND"}
+    by_cat: dict[str, list] = {}
+    for p, r in found.items():
+        by_cat.setdefault(r.get("category", "uncategorized"), []).append((p, r))
+
+    topics = ""
+    for cat, items in sorted(by_cat.items()):
+        subtopics = ""
+        for p, r in items:
+            subtopics += f'<topic><title>{_xml_esc(p)}</title><note>{_xml_esc(r["url"])}</note></topic>'
+        topics += f'<topic><title>{_xml_esc(cat)} ({len(items)})</title><children><topics type="attached">{subtopics}</topics></children></topic>'
+
+    content_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0">
+  <sheet>
+    <topic><title>@{_xml_esc(username)} ({len(found)} found)</title>
+      <children><topics type="attached">{topics}</topics></children>
+    </topic>
+  </sheet>
+</xmap-content>"""
+
+    meta_xml = '<?xml version="1.0" encoding="UTF-8"?><meta xmlns="urn:xmind:xmap:xmlns:meta:2.0" version="2.0"/>'
+    manifest_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<manifest xmlns="urn:xmind:xmap:xmlns:manifest:1.0">
+  <file-entry full-path="content.xml" media-type="text/xml"/>
+  <file-entry full-path="META-INF/manifest.xml" media-type="text/xml"/>
+  <file-entry full-path="meta.xml" media-type="text/xml"/>
+</manifest>"""
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("content.xml", content_xml)
+        zf.writestr("meta.xml", meta_xml)
+        zf.writestr("META-INF/manifest.xml", manifest_xml)
+    return buf.getvalue()
+
+
+def to_graphml(results: dict, username: str) -> str:
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND"}
+    esc = lambda x: htmlmod.escape(str(x), quote=True)
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<graphml xmlns="http://graphml.graphdrawing.org/xmlns">',
+        '<key id="url" for="node" attr.name="url" attr.type="string"/>',
+        '<key id="confidence" for="node" attr.name="confidence" attr.type="int"/>',
+        '<key id="category" for="node" attr.name="category" attr.type="string"/>',
+        f'<graph id="{esc(username)}" edgedefault="undirected">',
+        f'<node id="{esc(username)}"><data key="url">seed</data></node>',
+    ]
+    for p, r in found.items():
+        lines.append(
+            f'<node id="{esc(p)}">'
+            f'<data key="url">{esc(r["url"])}</data>'
+            f'<data key="confidence">{r.get("confidence", 0)}</data>'
+            f'<data key="category">{esc(r.get("category", ""))}</data></node>'
+        )
+        lines.append(f'<edge source="{esc(username)}" target="{esc(p)}"/>')
+    lines += ["</graph>", "</graphml>"]
+    return "\n".join(lines)
+
+
+def to_neo4j(results: dict, username: str) -> str:
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND"}
+    lines = [
+        f"// Argis Neo4j import for @{username}",
+        f"CREATE (u:Person {{handle: '{username}'}});",
+        "",
+    ]
+    for p, r in found.items():
+        safe_p = p.replace("'", "\\'")
+        url = r['url'].replace("'", "\\'")
+        conf = r.get('confidence', 0)
+        cat = r.get('category', 'uncategorized')
+        lines.append(
+            f"CREATE (n:Account {{platform: '{safe_p}', url: '{url}', "
+            f"confidence: {conf}, category: '{cat}'}});"
+        )
+        lines.append(
+            f"MATCH (u:Person {{handle: '{username}'}}), (n:Account {{platform: '{safe_p}'}}) "
+            f"CREATE (u)-[:HAS_ACCOUNT]->(n);"
+        )
+    email_map: dict[str, list[str]] = {}
+    for p, r in found.items():
+        for e in r.get("emails", []):
+            email_map.setdefault(e, []).append(p)
+    for email, platforms in email_map.items():
+        if len(platforms) > 1:
+            lines.append(f"\n// Shared email: {email}")
+            for p in platforms:
+                safe_p = p.replace("'", "\\'")
+                lines.append(
+                    f"MATCH (n:Account {{platform: '{safe_p}'}}) "
+                    f"SET n.email = '{email.replace(chr(39), chr(92) + chr(39))}';"
+                )
+    return "\n".join(lines)
+
+
+def to_pdf(results: dict, username: str, html_content: str, out_path: Path) -> bool:
+    """Render HTML to PDF. Tries weasyprint, then playwright."""
+    try:
+        from weasyprint import HTML
+        HTML(string=html_content).write_pdf(str(out_path))
+        return True
+    except Exception:
+        pass
+    try:
+        import asyncio
+        from playwright.async_api import async_playwright
+        async def _run():
+            async with async_playwright() as pw:
+                b = await pw.chromium.launch(headless=True)
+                pg = await b.new_page()
+                await pg.set_content(html_content, wait_until="networkidle")
+                await pg.pdf(path=str(out_path), format="A4", print_background=True)
+                await b.close()
+        asyncio.run(_run())
+        return True
+    except Exception:
+        return False
+
+
 FORMATTERS = {
     "json": lambda results, username: to_json(results),
     "csv": lambda results, username: to_csv(results),
     "markdown": to_markdown,
     "html": to_html,
+    "txt": to_txt,
+    "ndjson": to_ndjson,
+    "graphml": to_graphml,
+    "neo4j": to_neo4j,
 }
 
 

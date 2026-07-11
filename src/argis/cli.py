@@ -251,12 +251,22 @@ def scan(
         help="Build a full HTML dossier (found accounts + extracted identity) at this path."
     ),
     pdf: Optional[Path] = typer.Option(
-        None, "--pdf",
-        help="Export a PDF dossier at this path (needs weasyprint or playwright)."
+        None, "-P", "--pdf",
+        help="Generate a PDF report (needs weasyprint or playwright)."
     ),
     min_confidence: int = typer.Option(
         0, "--min-confidence", "-mc",
         help="Only show hits above this confidence (0-100). Try 60 for clean output."),
+    txt_out: Optional[Path] = typer.Option(None, "-T", "--txt", help="Create a TXT report."),
+    csv_out: Optional[Path] = typer.Option(None, "-C", "--csv", help="Create a CSV report."),
+    html_out: Optional[Path] = typer.Option(None, "-H", "--html", help="Create an HTML report."),
+    xmind: Optional[Path] = typer.Option(None, "-X", "--xmind", help="Generate an XMind 8 mindmap report."),
+    md_out: Optional[Path] = typer.Option(None, "-M", "--md", help="Generate a Markdown report."),
+    graph_out: Optional[Path] = typer.Option(None, "-G", "--graph", help="Generate a graph report (GraphML)."),
+    neo4j: Optional[Path] = typer.Option(None, "--neo4j", help="Generate Neo4j Cypher import script."),
+    json_type: Optional[str] = typer.Option(None, "-J", "--json", help="JSON report type: simple, ndjson."),
+    ai_flag: bool = typer.Option(False, "--ai", help="AI-powered analysis of results (needs OPENAI_API_KEY or ANTHROPIC_API_KEY)."),
+    ai_model: str = typer.Option("gpt-4o", "--ai-model", help="Model for AI analysis."),
 ):
     """Search for a target username across all configured platforms.
 
@@ -265,10 +275,9 @@ def scan(
       argis scan johndoe
       argis scan johndoe --status FOUND
       argis scan johndoe --export json,html
-      argis scan johndoe --exclude twitter,facebook
-      argis scan johndoe --verbose
-      argis scan johndoe --list
-      argis scan --file users.txt --export csv
+      argis scan johndoe -T report.txt -X mindmap.xmind
+      argis scan johndoe --ai
+      argis scan johndoe --min-confidence 60
     """
     init_config()
 
@@ -396,6 +405,50 @@ def scan(
         diffmod.save_scan(username, results)
 
     _handle_scan_export(results, username, export, output)
+
+    # --- individual format exports ---
+    from argis.utils.export import to_txt, to_ndjson, to_xmind, to_graphml, to_neo4j, to_csv, to_markdown, to_html
+    export_map = {
+        "txt": (txt_out, to_txt, "txt"),
+        "csv": (csv_out, to_csv, "csv"),
+        "html": (html_out, to_html, "html"),
+        "md": (md_out, to_markdown, "md"),
+        "xmind": (xmind, to_xmind, "xmind"),
+        "graphml": (graph_out, to_graphml, "graphml"),
+        "neo4j": (neo4j, to_neo4j, "cypher"),
+    }
+    for _name, (path, formatter, ext) in export_map.items():
+        if path:
+            p = path.resolve()
+            if p.suffix and p.suffix != f".{ext}":
+                p = p.parent / f"{p.stem}.{ext}"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            data = formatter(results, username)
+            if isinstance(data, bytes):
+                p.write_bytes(data)
+            else:
+                p.write_text(data, encoding="utf-8")
+            console.print(f"[green]Exported \u2192 [underline]{p}[/underline][/green]")
+
+    if json_type:
+        from argis.utils.export import to_json
+        is_ndjson = json_type == "ndjson"
+        js_path = output.resolve() / f"{username}.{'ndjson' if is_ndjson else 'json'}" if output else Path(f"{username}.{'ndjson' if is_ndjson else 'json'}")
+        js_path.parent.mkdir(parents=True, exist_ok=True)
+        if is_ndjson:
+            js_path.write_text(to_ndjson(results, username), encoding="utf-8")
+        else:
+            js_path.write_text(to_json(results), encoding="utf-8")
+        console.print(f"[green]Exported \u2192 [underline]{js_path.resolve()}[/underline][/green]")
+
+    if ai_flag:
+        console.print("[dim]Running AI analysis...[/dim]")
+        try:
+            from argis.ai_analyze import analyze as ai_analyze
+            analysis = ai_analyze(results, username, model=ai_model)
+            console.print(f"\n[bold cyan]AI Analysis for @{username}[/bold cyan]\n{analysis}")
+        except Exception as exc:
+            console.print(f"[red]AI analysis failed: {exc}[/red]")
 
     dsr = None
     graph_payload = None

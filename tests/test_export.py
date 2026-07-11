@@ -7,10 +7,15 @@ import pytest
 
 from argis.utils.export import (
     to_csv,
+    to_graphml,
     to_html,
     to_json,
     to_json_stream,
     to_markdown,
+    to_ndjson,
+    to_neo4j,
+    to_txt,
+    to_xmind,
 )
 
 
@@ -90,3 +95,77 @@ class TestToJsonStream:
             parsed = json.loads(line)
             assert "platform" in parsed
             assert "status" in parsed
+
+
+class TestToTxt:
+    def test_includes_username(self, sample_results):
+        result = to_txt(sample_results, "testuser")
+        assert "@testuser" in result
+
+    def test_includes_found_platforms(self, sample_results):
+        result = to_txt(sample_results, "testuser")
+        assert "GitHub" in result
+        assert "X" in result
+
+    def test_excludes_not_found(self, sample_results):
+        result = to_txt(sample_results, "testuser")
+        assert "Reddit" not in result
+
+
+class TestToNdjson:
+    def test_newline_separated(self, sample_results):
+        result = to_ndjson(sample_results, "testuser")
+        lines = result.strip().splitlines()
+        assert len(lines) == 3
+        for line in lines:
+            parsed = json.loads(line)
+            assert parsed["username"] == "testuser"
+            assert "platform" in parsed
+
+    def test_includes_status(self, sample_results):
+        lines = to_ndjson(sample_results, "testuser").strip().splitlines()
+        assert json.loads(lines[0])["status"] == "FOUND"
+
+
+class TestToXmind:
+    def test_returns_zip_bytes(self, sample_results):
+        result = to_xmind(sample_results, "testuser")
+        import zipfile
+        zf = zipfile.ZipFile(__import__("io").BytesIO(result))
+        assert "content.xml" in zf.namelist()
+        assert "META-INF/manifest.xml" in zf.namelist()
+
+    def test_contains_username_in_content(self, sample_results):
+        result = to_xmind(sample_results, "testuser")
+        import zipfile
+        zf = zipfile.ZipFile(__import__("io").BytesIO(result))
+        content = zf.read("content.xml").decode()
+        assert "testuser" in content
+
+
+class TestToGraphml:
+    def test_valid_graphml_xml(self, sample_results):
+        result = to_graphml(sample_results, "testuser")
+        assert 'xmlns="http://graphml.graphdrawing.org/xmlns"' in result
+        assert "<graphml" in result
+        assert "</graphml>" in result
+
+    def test_includes_seed_node(self, sample_results):
+        result = to_graphml(sample_results, "testuser")
+        assert 'id="testuser"' in result
+
+    def test_includes_edges(self, sample_results):
+        result = to_graphml(sample_results, "testuser")
+        assert 'source="testuser"' in result
+        assert 'target="GitHub"' in result
+
+
+class TestToNeo4j:
+    def test_contains_cypher_queries(self, sample_results):
+        result = to_neo4j(sample_results, "testuser")
+        assert "CREATE (u:Person {handle: 'testuser'});" in result
+        assert "HAS_ACCOUNT" in result
+
+    def test_creates_account_nodes(self, sample_results):
+        result = to_neo4j(sample_results, "testuser")
+        assert "CREATE (n:Account {platform: 'GitHub'" in result
