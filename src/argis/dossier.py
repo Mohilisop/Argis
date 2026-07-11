@@ -1104,3 +1104,70 @@ def generate_dossier(
     if output:
         output.write_text(html_content, encoding="utf-8")
     return html_content
+
+
+# --- backward-compatible aliases for the old API ---
+
+async def build_dossier(
+    username: str,
+    results: dict[str, dict],
+    *,
+    site_categories: dict[str, str] | None = None,
+    enrich: bool = True,
+    timeout: float = 12.0,
+    concurrency: int = 15,
+    proxy: str | None = None,
+    use_tor: bool = False,
+    render: bool = False,
+) -> dict:
+    """Backward-compatible wrapper — returns a dict that looks like the old Dossier."""
+    found = {p: r for p, r in results.items() if r.get("status") == "FOUND" and r.get("url")}
+    html_str = generate_dossier_html(list(found.values()), username)
+    return {"username": username, "results": results, "found": found, "html": html_str,
+            "total_scanned": len(results)}
+
+
+def print_dossier(dossier: dict, console) -> None:
+    """Backward-compatible stub — prints summary from old-style dossier dict."""
+    n = len(dossier.get("found", {}))
+    console.print(f"[bold cyan]@{dossier['username']}[/bold cyan] — {n} accounts found")
+
+
+def to_html_report(dossier_or_results, *, graph_payload: dict | None = None) -> str:
+    """Backward-compatible — accepts old Dossier/dict or new results dict."""
+    if isinstance(dossier_or_results, dict):
+        if "results" in dossier_or_results:
+            return dossier_or_results.get("html", "")
+        return generate_dossier_html(dossier_or_results, "")
+    return generate_dossier_html(dossier_or_results, "")
+
+
+def to_pdf(dossier_or_results, out_path: str | Path, *, graph_payload: dict | None = None) -> bool:
+    """Render dossier HTML to PDF. WeasyPrint then playwright fallback."""
+    html_str = to_html_report(dossier_or_results, graph_payload=graph_payload)
+    try:
+        from weasyprint import HTML
+        HTML(string=html_str).write_pdf(str(out_path))
+        return True
+    except Exception:
+        pass
+    try:
+        import asyncio
+        from playwright.async_api import async_playwright
+        async def _run():
+            async with async_playwright() as pw:
+                b = await pw.chromium.launch(headless=True)
+                pg = await b.new_page()
+                await pg.set_content(html_str, wait_until="networkidle")
+                await pg.pdf(path=str(out_path), format="A4", print_background=True)
+                await b.close()
+        asyncio.run(_run())
+        return True
+    except Exception:
+        return False
+
+
+async def build_dossier_graph(username: str, *, timeout=12.0, concurrency=15,
+                               proxy=None, use_tor=False) -> dict | None:
+    """Backward-compatible stub — returns None (graph generation was in old code)."""
+    return None
