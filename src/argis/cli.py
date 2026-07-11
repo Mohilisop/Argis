@@ -2271,7 +2271,7 @@ def me(
         f"{report.emails_breached} email(s) breached \u00b7 "
         f"{report.impersonators_found} impersonator(s)[/dim]",
         title="[bold]\U0001f6e1\ufe0f threat level[/bold]",
-        border_style=report.risk_level.lower(),
+        border_style={"HIGH": "red", "MEDIUM": "yellow", "LOW": "green"}[report.risk_level],
     )
     console.print()
     console.print(panel)
