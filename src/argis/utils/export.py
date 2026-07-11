@@ -226,9 +226,10 @@ def to_neo4j(results: dict, username: str) -> str:
             lines.append(f"\n// Shared email: {email}")
             for p in platforms:
                 safe_p = p.replace("'", "\\'")
+                safe_email = email.replace("'", "\\'")
                 lines.append(
                     f"MATCH (n:Account {{platform: '{safe_p}'}}) "
-                    f"SET n.email = '{email.replace(chr(39), chr(92) + chr(39))}';"
+                    f"SET n.email = '{safe_email}';"
                 )
     return "\n".join(lines)
 

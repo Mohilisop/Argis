@@ -149,7 +149,7 @@ def _merge_config(cli_args: dict[str, Any]) -> dict[str, Any]:
     return merged
 
 
-VALID_EXPORT_FORMATS = {"csv", "json", "markdown", "html", "md"}
+VALID_EXPORT_FORMATS = {"csv", "json", "markdown", "html", "md", "txt", "ndjson", "graphml", "neo4j"}
 
 
 @app.command(rich_help_panel="Username Scanning")
@@ -335,6 +335,14 @@ def scan(
             webhook_type=webhook_type,
             screenshots=screenshots,
             show_screenshots=show_screenshots,
+            txt_out=txt_out,
+            csv_out=csv_out,
+            html_out=html_out,
+            xmind=xmind,
+            md_out=md_out,
+            graph_out=graph_out,
+            neo4j=neo4j,
+            json_type=json_type,
         )
         return
 
@@ -835,15 +843,25 @@ def _handle_scan_export(
     if not export:
         return
 
+    from argis.utils.export import FORMATTERS
+
+    ext_map = {
+        "json": "json", "csv": "csv", "markdown": "md", "md": "md", "html": "html",
+        "txt": "txt", "ndjson": "ndjson", "graphml": "graphml", "neo4j": "cypher",
+    }
     formats = [f.strip().lower() for f in export.split(",")]
     for fmt in formats:
-        ext_map = {"json": "json", "csv": "csv", "markdown": "md", "md": "md", "html": "html"}
-        ext = ext_map.get(fmt)
-        if ext is None:
+        if fmt not in FORMATTERS:
             console.print(f"[bold red]Unsupported export format:[/bold red] {fmt}")
             continue
+        ext = ext_map.get(fmt, fmt)
         out_path = output or Path(f"{username}.{ext}")
-        export_results(results, username, fmt, out_path)
+        data = FORMATTERS[fmt](results, username)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(data, bytes):
+            out_path.write_bytes(data)
+        else:
+            out_path.write_text(data, encoding="utf-8")
         console.print(f"[dim]Exported results to {out_path}[/dim]")
 
 
@@ -877,6 +895,14 @@ def _run_batch_scan(
     webhook_type: str,
     screenshots: bool = False,
     show_screenshots: bool = False,
+    txt_out: Path | None = None,
+    csv_out: Path | None = None,
+    html_out: Path | None = None,
+    xmind: Path | None = None,
+    md_out: Path | None = None,
+    graph_out: Path | None = None,
+    neo4j: Path | None = None,
+    json_type: str | None = None,
 ) -> None:
     if not file.exists():
         console.print(f"[bold red]File not found:[/bold red] {file}")
@@ -971,6 +997,44 @@ def _run_batch_scan(
                 print_terminal_screenshots(data)
         except Exception:
             pass
+
+    # individual format exports for batch
+    from argis.utils.export import to_txt, to_ndjson, to_xmind, to_graphml, to_neo4j, to_csv, to_markdown, to_html
+    batch_export_map = {
+        "txt": (txt_out, to_txt, "txt"),
+        "csv": (csv_out, to_csv, "csv"),
+        "html": (html_out, to_html, "html"),
+        "md": (md_out, to_markdown, "md"),
+        "xmind": (xmind, to_xmind, "xmind"),
+        "graphml": (graph_out, to_graphml, "graphml"),
+        "neo4j": (neo4j, to_neo4j, "cypher"),
+    }
+    merged = {}
+    for u_key, u_results in all_results.items():
+        merged.update(u_results)
+    for _bname, (bpath, bformatter, bext) in batch_export_map.items():
+        if bpath:
+            bp = bpath.resolve()
+            if bp.suffix and bp.suffix != f".{bext}":
+                bp = bp.parent / f"{bp.stem}.{bext}"
+            bp.parent.mkdir(parents=True, exist_ok=True)
+            bdata = bformatter(merged, "batch")
+            if isinstance(bdata, bytes):
+                bp.write_bytes(bdata)
+            else:
+                bp.write_text(bdata, encoding="utf-8")
+            console.print(f"[green]Exported \u2192 [underline]{bp}[/underline][/green]")
+
+    if json_type:
+        is_ndjson = json_type == "ndjson"
+        js_path = output.resolve() / f"batch.{'ndjson' if is_ndjson else 'json'}" if output else Path(f"batch.{'ndjson' if is_ndjson else 'json'}")
+        js_path.parent.mkdir(parents=True, exist_ok=True)
+        if is_ndjson:
+            js_path.write_text(to_ndjson(merged, "batch"), encoding="utf-8")
+        else:
+            from argis.utils.export import to_json
+            js_path.write_text(to_json(merged), encoding="utf-8")
+        console.print(f"[green]Exported \u2192 [underline]{js_path.resolve()}[/underline][/green]")
 
 
 def _export_batch_results(all_results: dict, export: str | None, output: Path | None) -> None:
