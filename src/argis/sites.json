@@ -1,800 +1,511 @@
-{
-  "GitHub": {
-    "url": "https://github.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "GitLab": {
-    "url": "https://gitlab.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Bitbucket": {
-    "url": "https://bitbucket.org/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "SourceForge": {
-    "url": "https://sourceforge.net/u/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "PyPI": {
-    "url": "https://pypi.org/user/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "npm": {
-    "url": "https://www.npmjs.com/~{}",
-    "error_type": "message",
-    "error_criteria": "Cannot GET",
-    "category": "coding"
-  },
-  "Docker Hub": {
-    "url": "https://hub.docker.com/u/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Replit": {
-    "url": "https://replit.com/@{}",
-    "error_type": "message",
-    "error_criteria": "Sign Up",
-    "category": "coding"
-  },
-  "CodePen": {
-    "url": "https://codepen.io/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Kaggle": {
-    "url": "https://www.kaggle.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Stack Overflow": {
-    "url": "https://stackoverflow.com/users/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "HackerRank": {
-    "url": "https://www.hackerrank.com/{}",
-    "error_type": "message",
-    "error_criteria": "Page Not Found",
-    "category": "coding"
-  },
-  "HackerOne": {
-    "url": "https://hackerone.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "security"
-  },
-  "Bugcrowd": {
-    "url": "https://bugcrowd.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "security"
-  },
-  "Keybase": {
-    "url": "https://keybase.io/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "security"
-  },
-  "Reddit": {
-    "url": "https://www.reddit.com/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "X (Twitter)": {
-    "url": "https://x.com/{}",
-    "error_type": "message",
-    "error_criteria": "This account doesn’t exist",
-    "category": "social"
-  },
-  "Instagram": {
-    "url": "https://www.instagram.com/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Facebook": {
-    "url": "https://www.facebook.com/{}",
-    "error_type": "message",
-    "error_criteria": "This content isn't available",
-    "category": "social"
-  },
-  "TikTok": {
-    "url": "https://www.tiktok.com/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Snapchat": {
-    "url": "https://www.snapchat.com/add/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Pinterest": {
-    "url": "https://www.pinterest.com/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Tumblr": {
-    "url": "https://{}.tumblr.com/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "LinkedIn": {
-    "url": "https://www.linkedin.com/in/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Mastodon (mastodon.social)": {
-    "url": "https://mastodon.social/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "VK": {
-    "url": "https://vk.com/{}",
-    "error_type": "message",
-    "error_criteria": "This page has been deleted",
-    "category": "social"
-  },
-  "Quora": {
-    "url": "https://www.quora.com/profile/{}",
-    "error_type": "message",
-    "error_criteria": "Page Not Found",
-    "category": "social"
-  },
-  "YouTube": {
-    "url": "https://www.youtube.com/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Twitch": {
-    "url": "https://www.twitch.tv/{}",
-    "error_type": "message",
-    "error_criteria": "Sorry. Unless you've got a time machine",
-    "category": "media"
-  },
-  "Vimeo": {
-    "url": "https://vimeo.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "SoundCloud": {
-    "url": "https://soundcloud.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Spotify": {
-    "url": "https://open.spotify.com/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Last.fm": {
-    "url": "https://www.last.fm/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Flickr": {
-    "url": "https://www.flickr.com/people/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "DeviantArt": {
-    "url": "https://{}.deviantart.com/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Behance": {
-    "url": "https://www.behance.net/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Dribbble": {
-    "url": "https://dribbble.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "500px": {
-    "url": "https://500px.com/p/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Medium": {
-    "url": "https://medium.com/@{}",
-    "error_type": "response_url",
-    "error_criteria": "https://medium.com/404",
-    "category": "blogging"
-  },
-  "Dev.to": {
-    "url": "https://dev.to/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "blogging"
-  },
-  "Hashnode": {
-    "url": "https://hashnode.com/@{}",
-    "error_type": "message",
-    "error_criteria": "User not found",
-    "category": "blogging"
-  },
-  "Substack": {
-    "url": "https://{}.substack.com/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "blogging"
-  },
-  "WordPress": {
-    "url": "https://{}.wordpress.com/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "blogging"
-  },
-  "Blogger": {
-    "url": "https://{}.blogspot.com/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "blogging"
-  },
-  "Wattpad": {
-    "url": "https://www.wattpad.com/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "blogging"
-  },
-  "Goodreads": {
-    "url": "https://www.goodreads.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "lifestyle"
-  },
-  "Letterboxd": {
-    "url": "https://letterboxd.com/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "lifestyle"
-  },
-  "MyAnimeList": {
-    "url": "https://myanimelist.net/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "lifestyle"
-  },
-  "Chess.com": {
-    "url": "https://www.chess.com/member/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "lifestyle"
-  },
-  "Lichess": {
-    "url": "https://lichess.org/@/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "lifestyle"
-  },
-  "Steam": {
-    "url": "https://steamcommunity.com/id/{}",
-    "error_type": "message",
-    "error_criteria": "The specified profile could not be found",
-    "category": "gaming"
-  },
-  "Xbox Gamertag": {
-    "url": "https://xboxgamertag.com/search/{}",
-    "error_type": "message",
-    "error_criteria": "This profile is currently unavailable",
-    "category": "gaming"
-  },
-  "Itch.io": {
-    "url": "https://{}.itch.io/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "gaming"
-  },
-  "Patreon": {
-    "url": "https://www.patreon.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "funding"
-  },
-  "Ko-fi": {
-    "url": "https://ko-fi.com/{}",
-    "error_type": "message",
-    "error_criteria": "This page is not available",
-    "category": "funding"
-  },
-  "Buy Me a Coffee": {
-    "url": "https://www.buymeacoffee.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "funding"
-  },
-  "GoFundMe": {
-    "url": "https://www.gofundme.com/f/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "funding"
-  },
-  "Product Hunt": {
-    "url": "https://www.producthunt.com/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "startup"
-  },
-  "AngelList (Wellfound)": {
-    "url": "https://wellfound.com/u/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "startup"
-  },
-  "Gravatar": {
-    "url": "https://gravatar.com/{}",
-    "error_type": "message",
-    "error_criteria": "profile isn't available",
-    "category": "identity"
-  },
-  "About.me": {
-    "url": "https://about.me/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "identity"
-  },
-  "Linktree": {
-    "url": "https://linktr.ee/{}",
-    "error_type": "message",
-    "error_criteria": "This page is unavailable",
-    "category": "identity"
-  },
-  "Imgur": {
-    "url": "https://imgur.com/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Telegram": {
-    "url": "https://t.me/{}",
-    "error_type": "message",
-    "error_criteria": "If you have Telegram, you can contact",
-    "category": "messaging"
-  },
-  "SlideShare": {
-    "url": "https://www.slideshare.net/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "docs"
-  },
-  "Issuu": {
-    "url": "https://issuu.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "docs"
-  },
-  "Codeforces": {
-    "url": "https://codeforces.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "LeetCode": {
-    "url": "https://leetcode.com/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Codewars": {
-    "url": "https://www.codewars.com/users/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Hacker News": {
-    "url": "https://news.ycombinator.com/user?id={}",
-    "error_type": "message",
-    "error_criteria": "No such user.",
-    "category": "coding"
-  },
-  "Sourcehut": {
-    "url": "https://sr.ht/~{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "osu!": {
-    "url": "https://osu.ppy.sh/users/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "gaming"
-  },
-  "Kongregate": {
-    "url": "https://www.kongregate.com/accounts/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "gaming"
-  },
-  "Newgrounds": {
-    "url": "https://{}.newgrounds.com/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "gaming"
-  },
-  "Bandcamp": {
-    "url": "https://{}.bandcamp.com/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Mixcloud": {
-    "url": "https://www.mixcloud.com/{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Dailymotion": {
-    "url": "https://www.dailymotion.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "ArtStation": {
-    "url": "https://www.artstation.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "VSCO": {
-    "url": "https://vsco.co/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "media"
-  },
-  "Pastebin": {
-    "url": "https://pastebin.com/u/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "docs"
-  },
-  "Fiverr": {
-    "url": "https://www.fiverr.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "startup"
-  },
-  "Open Collective": {
-    "url": "https://opencollective.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "funding"
-  },
-  "Untappd": {
-    "url": "https://untappd.com/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "lifestyle"
-  },
-  "Ravelry": {
-    "url": "https://www.ravelry.com/people/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "lifestyle"
-  },
-  "WhatsApp": {
-    "url": "https://wa.me/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Signal": {
-    "url": "https://signal.me/#p/{}",
-    "error_type": "message",
-    "error_criteria": "not found",
-    "category": "social"
-  },
-  "WeChat": {
-    "url": "https://web.wechat.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Discord": {
-    "url": "https://discord.com/users/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Mastodon.social": {
-    "url": "https://mastodon.social/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Bluesky": {
-    "url": "https://bsky.app/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Threads": {
-    "url": "https://www.threads.net/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Indeed": {
-    "url": "https://profile.indeed.com/p/{}",
-    "error_type": "message",
-    "error_criteria": "Page not found",
-    "category": "professional"
-  },
-  "Glassdoor": {
-    "url": "https://www.glassdoor.com/Overview/Working-at-{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "professional"
-  },
-  "AngelList": {
-    "url": "https://angel.co/u/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "professional"
-  },
-  "Xing": {
-    "url": "https://www.xing.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "professional"
-  },
-  "Shazam": {
-    "url": "https://www.shazam.com/artist/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "creative"
-  },
-  "Epic Games": {
-    "url": "https://www.epicgames.com/id/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "gaming"
-  },
-  "Xbox Live": {
-    "url": "https://account.xbox.com/en-us/profile?gamertag={}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "gaming"
-  },
-  "PlayStation": {
-    "url": "https://my.playstation.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "gaming"
-  },
-  "Gaia Online": {
-    "url": "https://www.gaiaonline.com/profiles/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "gaming"
-  },
-  "Scribd": {
-    "url": "https://www.scribd.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "docs"
-  },
-  "IMDb": {
-    "url": "https://www.imdb.com/user/ur{}/",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "lifestyle"
-  },
-  "Cash App": {
-    "url": "https://cash.app/${}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "finance"
-  },
-  "PayPal": {
-    "url": "https://www.paypal.com/paypalme/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "finance"
-  },
-  "Venmo": {
-    "url": "https://venmo.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "finance"
-  },
-  "Crunchbase": {
-    "url": "https://www.crunchbase.com/person/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "startup"
-  },
-  "Carrd": {
-    "url": "https://{}.carrd.co",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "social"
-  },
-  "Bitly": {
-    "url": "https://bitly.com/u/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "startup"
-  },
-  "HubPages": {
-    "url": "https://hubpages.com/@{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "blogging"
-  },
-  "Instructables": {
-    "url": "https://www.instructables.com/member/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "creative"
-  },
-  "Stack Exchange": {
-    "url": "https://stackexchange.com/users/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "TryHackMe": {
-    "url": "https://tryhackme.com/p/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "security"
-  },
-  "Hack The Box": {
-    "url": "https://app.hackthebox.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "security"
-  },
-  "Root-Me": {
-    "url": "https://www.root-me.org/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "security"
-  },
-  "VulnHub": {
-    "url": "https://www.vulnhub.com/author/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "security"
-  },
-  "Bugsink": {
-    "url": "https://www.bugsink.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "security"
-  },
-  "TopCoder": {
-    "url": "https://www.topcoder.com/members/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Exercism": {
-    "url": "https://exercism.org/profiles/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "HackerRank (Coding)": {
-    "url": "https://www.hackerrank.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "GeeksforGeeks": {
-    "url": "https://auth.geeksforgeeks.org/user/{}/",
-    "error_type": "message",
-    "error_criteria": "undefined",
-    "category": "coding"
-  },
-  "Coderwall": {
-    "url": "https://coderwall.com/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "SoloLearn": {
-    "url": "https://www.sololearn.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Codecademy": {
-    "url": "https://www.codecademy.com/profiles/{}",
-    "error_type": "message",
-    "error_criteria": "Profile Not Found",
-    "category": "coding"
-  },
-  "Pluralsight": {
-    "url": "https://app.pluralsight.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "coding"
-  },
-  "Udemy": {
-    "url": "https://www.udemy.com/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "learning"
-  },
-  "Coursera": {
-    "url": "https://www.coursera.org/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "learning"
-  },
-  "edX": {
-    "url": "https://profile.edx.org/u/{}",
-    "error_type": "message",
-    "error_criteria": "Learner Profile",
-    "category": "learning"
-  },
-  "Khan Academy": {
-    "url": "https://www.khanacademy.org/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "learning"
-  },
-  "Duolingo": {
-    "url": "https://www.duolingo.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "learning"
-  },
-  "Memrise": {
-    "url": "https://www.memrise.com/user/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "learning"
-  },
-  "Busuu": {
-    "url": "https://www.busuu.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "learning"
-  },
-  "Anki": {
-    "url": "https://ankiweb.net/u/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "learning"
-  },
-  "Apple Music": {
-    "url": "https://music.apple.com/profile/{}",
-    "error_type": "status_code",
-    "error_criteria": 404,
-    "category": "creative"
-  }
-}
+[
+  {"name": "GitHub", "url": "https://github.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "GitLab", "url": "https://gitlab.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Bitbucket", "url": "https://bitbucket.org/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Codeberg", "url": "https://codeberg.org/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "SourceForge", "url": "https://sourceforge.net/u/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Replit", "url": "https://replit.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Stack Overflow", "url": "https://stackoverflow.com/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "HackerRank", "url": "https://www.hackerrank.com/profile/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "LeetCode", "url": "https://leetcode.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Codeforces", "url": "https://codeforces.com/profile/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "CodePen", "url": "https://codepen.io/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "JSFiddle", "url": "https://jsfiddle.net/user/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "npm", "url": "https://www.npmjs.com/~{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "PyPI", "url": "https://pypi.org/user/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "RubyGems", "url": "https://rubygems.org/profiles/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Packagist", "url": "https://packagist.org/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Crates.io", "url": "https://crates.io/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Docker Hub", "url": "https://hub.docker.com/u/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Kaggle", "url": "https://www.kaggle.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Dev.to", "url": "https://dev.to/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Hashnode", "url": "https://hashnode.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Glitch", "url": "https://glitch.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Launchpad", "url": "https://launchpad.net/~{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "OpenHub", "url": "https://www.openhub.net/accounts/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Exercism", "url": "https://exercism.org/profiles/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "CodinGame", "url": "https://www.codingame.com/profile/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "HackerEarth", "url": "https://www.hackerearth.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "TopCoder", "url": "https://profiles.topcoder.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Gitea", "url": "https://gitea.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Gist", "url": "https://gist.github.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Twitter", "url": "https://x.com/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Instagram", "url": "https://www.instagram.com/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Facebook", "url": "https://www.facebook.com/{username}", "check": "response_body", "valid": "content", "error_msg": "page isn't available", "category": "social"},
+  {"name": "TikTok", "url": "https://www.tiktok.com/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Reddit", "url": "https://www.reddit.com/user/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Pinterest", "url": "https://www.pinterest.com/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Tumblr", "url": "https://{username}.tumblr.com", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "LinkedIn", "url": "https://www.linkedin.com/in/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Mastodon.social", "url": "https://mastodon.social/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Threads", "url": "https://www.threads.net/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Bluesky", "url": "https://bsky.app/profile/{username}.bsky.social", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Snapchat", "url": "https://www.snapchat.com/add/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "VK", "url": "https://vk.com/{username}", "check": "response_body", "valid": "content", "error_msg": "deleted", "category": "social"},
+  {"name": "OK.ru", "url": "https://ok.ru/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Quora", "url": "https://www.quora.com/profile/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Medium", "url": "https://medium.com/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Substack", "url": "https://{username}.substack.com", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Clubhouse", "url": "https://www.clubhouse.com/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Minds", "url": "https://www.minds.com/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Gab", "url": "https://gab.com/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Parler", "url": "https://parler.com/profile/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Truth Social", "url": "https://truthsocial.com/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Lemmy", "url": "https://lemmy.world/u/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Diaspora", "url": "https://diaspora.social/people/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Cohost", "url": "https://cohost.org/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Warpcast", "url": "https://warpcast.com/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Nostr", "url": "https://iris.to/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Plurk", "url": "https://www.plurk.com/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Taringa", "url": "https://www.taringa.net/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Twitch", "url": "https://www.twitch.tv/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Steam", "url": "https://steamcommunity.com/id/{username}", "check": "response_body", "valid": "content", "error_msg": "could not be found", "category": "gaming"},
+  {"name": "Xbox Gamertag", "url": "https://www.xbox.com/en-US/play/user/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "PlayStation Network", "url": "https://psnprofiles.com/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Epic Games", "url": "https://www.epicgames.com/id/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Roblox", "url": "https://www.roblox.com/user.aspx?username={username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Minecraft", "url": "https://namemc.com/profile/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Chess.com", "url": "https://www.chess.com/member/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Lichess", "url": "https://lichess.org/@/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Roblox Trade", "url": "https://www.rolimons.com/player/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "osu!", "url": "https://osu.ppy.sh/users/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Speedrun.com", "url": "https://www.speedrun.com/user/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "RetroAchievements", "url": "https://retroachievements.org/user/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Fortnite Tracker", "url": "https://fortnitetracker.com/profile/all/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "League of Graphs", "url": "https://www.leagueofgraphs.com/summoner/na/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Valorant Tracker", "url": "https://tracker.gg/valorant/profile/riot/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Faceit", "url": "https://www.faceit.com/en/players/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "ESEA", "url": "https://play.esea.net/users/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Ubisoft", "url": "https://www.ubisoft.com/en-us/account/profile/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Battle.net", "url": "https://playoverwatch.com/en-us/career/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Hypixel", "url": "https://plancke.io/hypixel/player/stats/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "GGn", "url": "https://gazellegames.net/user.php?action=search&search={username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Smite Guru", "url": "https://smite.guru/profile/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Apex Tracker", "url": "https://apex.tracker.gg/apex/profile/origin/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Rocket League Tracker", "url": "https://rocketleague.tracker.network/rocket-league/profile/epic/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "World of Warcraft", "url": "https://worldofwarcraft.blizzard.com/en-us/character/us/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Telegram", "url": "https://t.me/{username}", "check": "response_body", "valid": "content", "error_msg": "can you see this page", "category": "messaging"},
+  {"name": "Discord", "url": "https://discord.com/users/{username}", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "Signal", "url": "https://signal.me/#{username}", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "Skype", "url": "https://join.skype.com/invite/{username}", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "WhatsApp", "url": "https://wa.me/{username}", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "Line", "url": "https://line.me/ti/p/{username}", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "WeChat", "url": "https://open.weixin.qq.com/qr/code?username={username}", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "Viber", "url": "https://viber.com/{username}", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "ICQ", "url": "https://icq.im/{username}", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "Matrix", "url": "https://matrix.to/#/@{username}:matrix.org", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "Slack", "url": "https://{username}.slack.com", "check": "status_code", "valid": 200, "category": "messaging"},
+  {"name": "YouTube", "url": "https://www.youtube.com/@{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "Vimeo", "url": "https://vimeo.com/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "Dailymotion", "url": "https://www.dailymotion.com/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "Rumble", "url": "https://rumble.com/user/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "Odysee", "url": "https://odysee.com/@{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "BitChute", "url": "https://www.bitchute.com/channel/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "PeerTube", "url": "https://videos.joinpeertube.org/accounts/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "Kick", "url": "https://kick.com/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "Trovo", "url": "https://trovo.live/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "DLive", "url": "https://dlive.tv/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "Bilibili", "url": "https://space.bilibili.com/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "NicoNico", "url": "https://www.nicovideo.jp/user/{username}", "check": "status_code", "valid": 200, "category": "video"},
+  {"name": "Spotify", "url": "https://open.spotify.com/user/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "SoundCloud", "url": "https://soundcloud.com/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Last.fm", "url": "https://www.last.fm/user/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Bandcamp", "url": "https://{username}.bandcamp.com", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Apple Music", "url": "https://music.apple.com/profile/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Deezer", "url": "https://www.deezer.com/profile/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Mixcloud", "url": "https://www.mixcloud.com/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Genius", "url": "https://genius.com/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "RateYourMusic", "url": "https://rateyourmusic.com/~{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Discogs", "url": "https://www.discogs.com/user/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "MuseScore", "url": "https://musescore.com/user/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Audius", "url": "https://audius.co/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "ReverbNation", "url": "https://www.reverbnation.com/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Tidal", "url": "https://tidal.com/browse/user/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Flickr", "url": "https://www.flickr.com/people/{username}", "check": "status_code", "valid": 200, "category": "photography"},
+  {"name": "500px", "url": "https://500px.com/p/{username}", "check": "status_code", "valid": 200, "category": "photography"},
+  {"name": "Unsplash", "url": "https://unsplash.com/@{username}", "check": "status_code", "valid": 200, "category": "photography"},
+  {"name": "VSCO", "url": "https://vsco.co/{username}/gallery", "check": "status_code", "valid": 200, "category": "photography"},
+  {"name": "EyeEm", "url": "https://www.eyeem.com/u/{username}", "check": "status_code", "valid": 200, "category": "photography"},
+  {"name": "SmugMug", "url": "https://{username}.smugmug.com", "check": "status_code", "valid": 200, "category": "photography"},
+  {"name": "Pexels", "url": "https://www.pexels.com/@{username}", "check": "status_code", "valid": 200, "category": "photography"},
+  {"name": "Pixabay", "url": "https://pixabay.com/users/{username}", "check": "status_code", "valid": 200, "category": "photography"},
+  {"name": "DeviantArt", "url": "https://www.deviantart.com/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "ArtStation", "url": "https://www.artstation.com/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Behance", "url": "https://www.behance.net/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Dribbble", "url": "https://dribbble.com/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Figma", "url": "https://www.figma.com/@{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Pixiv", "url": "https://www.pixiv.net/users/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Newgrounds", "url": "https://{username}.newgrounds.com", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Weasyl", "url": "https://www.weasyl.com/~{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "FurAffinity", "url": "https://www.furaffinity.net/user/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Artfol", "url": "https://artfol.co/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Cara", "url": "https://cara.app/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Foundation", "url": "https://foundation.app/@{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Hic et Nunc", "url": "https://www.hicetnunc.art/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "OpenSea", "url": "https://opensea.io/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Rarible", "url": "https://rarible.com/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Etsy", "url": "https://www.etsy.com/shop/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "eBay", "url": "https://www.ebay.com/usr/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Depop", "url": "https://www.depop.com/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Poshmark", "url": "https://poshmark.com/closet/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Mercari", "url": "https://www.mercari.com/u/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Vinted", "url": "https://www.vinted.com/member/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Grailed", "url": "https://www.grailed.com/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Redbubble", "url": "https://www.redbubble.com/people/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Gumroad", "url": "https://{username}.gumroad.com", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Storenvy", "url": "https://www.storenvy.com/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "WordPress", "url": "https://{username}.wordpress.com", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Blogger", "url": "https://{username}.blogspot.com", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Ghost", "url": "https://{username}.ghost.io", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Telegraph", "url": "https://telegra.ph/{username}", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Write.as", "url": "https://write.as/{username}", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Bear Blog", "url": "https://{username}.bearblog.dev", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Micro.blog", "url": "https://micro.blog/{username}", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "HubPages", "url": "https://hubpages.com/@{username}", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "LiveJournal", "url": "https://{username}.livejournal.com", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Wix", "url": "https://{username}.wixsite.com", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Weebly", "url": "https://{username}.weebly.com", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Notion", "url": "https://{username}.notion.site", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Carrd", "url": "https://{username}.carrd.co", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "About.me", "url": "https://about.me/{username}", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Linktree", "url": "https://linktr.ee/{username}", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Bio.link", "url": "https://bio.link/{username}", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Beacons", "url": "https://beacons.ai/{username}", "check": "status_code", "valid": 200, "category": "blogging"},
+  {"name": "Hacker News", "url": "https://news.ycombinator.com/user?id={username}", "check": "response_body", "valid": "content", "error_msg": "No such user", "category": "forums"},
+  {"name": "Lobsters", "url": "https://lobste.rs/u/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Discourse Meta", "url": "https://meta.discourse.org/u/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "XDA Developers", "url": "https://xdaforums.com/m/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "AnandTech", "url": "https://www.anandtech.com/members/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Ars Technica", "url": "https://arstechnica.com/civis/members/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Tom's Hardware", "url": "https://forums.tomshardware.com/members/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "IGN", "url": "https://www.ign.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "NeoGAF", "url": "https://www.neogaf.com/members/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "ResetEra", "url": "https://www.resetera.com/members/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Something Awful", "url": "https://forums.somethingawful.com/member.php?username={username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "4chan Archive", "url": "https://archive.4plebs.org/search/username/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Kiwi Farms", "url": "https://kiwifarms.net/members/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "V2EX", "url": "https://www.v2ex.com/member/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Zhihu", "url": "https://www.zhihu.com/people/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "ProductHunt", "url": "https://www.producthunt.com/@{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Indie Hackers", "url": "https://www.indiehackers.com/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Keybase", "url": "https://keybase.io/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "HackerOne", "url": "https://hackerone.com/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "Bugcrowd", "url": "https://bugcrowd.com/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "Hack The Box", "url": "https://app.hackthebox.com/profile/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "TryHackMe", "url": "https://tryhackme.com/p/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "CyberDefenders", "url": "https://cyberdefenders.org/p/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "Root Me", "url": "https://www.root-me.org/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "CTFtime", "url": "https://ctftime.org/user/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "PentesterLab", "url": "https://pentesterlab.com/profile/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "Exploit Database", "url": "https://www.exploit-db.com/author/?a={username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "Vulners", "url": "https://vulners.com/userinfo/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "Credly", "url": "https://www.credly.com/users/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "Patreon", "url": "https://www.patreon.com/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Ko-fi", "url": "https://ko-fi.com/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Buy Me a Coffee", "url": "https://www.buymeacoffee.com/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "PayPal.me", "url": "https://www.paypal.me/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Venmo", "url": "https://account.venmo.com/u/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Cash App", "url": "https://cash.app/${username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Liberapay", "url": "https://liberapay.com/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Open Collective", "url": "https://opencollective.com/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "GitHub Sponsors", "url": "https://github.com/sponsors/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Donately", "url": "https://www.donately.com/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Coinbase", "url": "https://www.coinbase.com/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Binance", "url": "https://www.binance.com/en/feed/profile/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Letterboxd", "url": "https://letterboxd.com/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "Trakt", "url": "https://trakt.tv/users/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "MyAnimeList", "url": "https://myanimelist.net/profile/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "AniList", "url": "https://anilist.co/user/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "Kitsu", "url": "https://kitsu.io/users/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "IMDb", "url": "https://www.imdb.com/user/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "Goodreads", "url": "https://www.goodreads.com/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "LibraryThing", "url": "https://www.librarything.com/profile/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "TV Time", "url": "https://www.tvtime.com/en/user/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "Simkl", "url": "https://simkl.com/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "Backloggd", "url": "https://www.backloggd.com/u/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "RAWG", "url": "https://rawg.io/@{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "Serializd", "url": "https://www.serializd.com/user/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "Podcast Index", "url": "https://podcastindex.org/podcaster/{username}", "check": "status_code", "valid": 200, "category": "entertainment"},
+  {"name": "Strava", "url": "https://www.strava.com/athletes/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "Fitbit", "url": "https://www.fitbit.com/user/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "Garmin Connect", "url": "https://connect.garmin.com/modern/profile/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "Nike Run Club", "url": "https://www.nike.com/member/profile/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "MapMyRun", "url": "https://www.mapmyrun.com/profile/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "Peloton", "url": "https://members.onepeloton.com/members/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "Zwift", "url": "https://www.zwift.com/athlete/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "Komoot", "url": "https://www.komoot.com/user/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "Smashrun", "url": "https://smashrun.com/{username}", "check": "status_code", "valid": 200, "category": "fitness"},
+  {"name": "Coursera", "url": "https://www.coursera.org/user/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Udemy", "url": "https://www.udemy.com/user/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Khan Academy", "url": "https://www.khanacademy.org/profile/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Duolingo", "url": "https://www.duolingo.com/profile/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Memrise", "url": "https://www.memrise.com/user/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Codecademy", "url": "https://www.codecademy.com/profiles/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "FreeCodeCamp", "url": "https://www.freecodecamp.org/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "edX", "url": "https://profile.edx.org/u/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Skillshare", "url": "https://www.skillshare.com/profile/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Pluralsight", "url": "https://app.pluralsight.com/profile/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Brilliant", "url": "https://brilliant.org/profile/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "ResearchGate", "url": "https://www.researchgate.net/profile/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Academia.edu", "url": "https://independent.academia.edu/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "ORCID", "url": "https://orcid.org/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Google Scholar", "url": "https://scholar.google.com/citations?user={username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Instructables", "url": "https://www.instructables.com/member/{username}", "check": "status_code", "valid": 200, "category": "education"},
+  {"name": "Thingiverse", "url": "https://www.thingiverse.com/{username}", "check": "status_code", "valid": 200, "category": "maker"},
+  {"name": "Printables", "url": "https://www.printables.com/@{username}", "check": "status_code", "valid": 200, "category": "maker"},
+  {"name": "Hackster.io", "url": "https://www.hackster.io/{username}", "check": "status_code", "valid": 200, "category": "maker"},
+  {"name": "Hackaday.io", "url": "https://hackaday.io/{username}", "check": "status_code", "valid": 200, "category": "maker"},
+  {"name": "GrabCAD", "url": "https://grabcad.com/community/members/{username}", "check": "status_code", "valid": 200, "category": "maker"},
+  {"name": "Cults3D", "url": "https://cults3d.com/en/users/{username}", "check": "status_code", "valid": 200, "category": "maker"},
+  {"name": "Pastebin", "url": "https://pastebin.com/u/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Ideone", "url": "https://ideone.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Trello", "url": "https://trello.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Asana", "url": "https://app.asana.com/u/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Notion Public", "url": "https://www.notion.so/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Canva", "url": "https://www.canva.com/p/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Calendly", "url": "https://calendly.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Typeform", "url": "https://{username}.typeform.com", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "IFTTT", "url": "https://ifttt.com/p/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Zapier", "url": "https://zapier.com/shared/by/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Gravatar", "url": "https://gravatar.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "imgur", "url": "https://imgur.com/user/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Giphy", "url": "https://giphy.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Internet Archive", "url": "https://archive.org/details/@{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Scribd", "url": "https://www.scribd.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "SlideShare", "url": "https://www.slideshare.net/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Speaker Deck", "url": "https://speakerdeck.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Issuu", "url": "https://issuu.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Prezi", "url": "https://prezi.com/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "Bitly", "url": "https://bitly.com/u/{username}", "check": "status_code", "valid": 200, "category": "tools"},
+  {"name": "TripAdvisor", "url": "https://www.tripadvisor.com/Profile/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Airbnb", "url": "https://www.airbnb.com/users/show/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Couchsurfing", "url": "https://www.couchsurfing.com/people/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Atlas Obscura", "url": "https://www.atlasobscura.com/users/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Polarsteps", "url": "https://www.polarsteps.com/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "AllTrails", "url": "https://www.alltrails.com/members/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Geocaching", "url": "https://www.geocaching.com/p/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Yelp", "url": "https://www.yelp.com/user_details?userid={username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Foursquare", "url": "https://foursquare.com/user/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Untappd", "url": "https://untappd.com/user/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Vivino", "url": "https://www.vivino.com/users/{username}", "check": "status_code", "valid": 200, "category": "travel"},
+  {"name": "Ravelry", "url": "https://www.ravelry.com/people/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Goodreads Author", "url": "https://www.goodreads.com/author/show/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "BoardGameGeek", "url": "https://boardgamegeek.com/user/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Wattpad", "url": "https://www.wattpad.com/user/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Archive of Our Own", "url": "https://archiveofourown.org/users/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Fanfiction.net", "url": "https://www.fanfiction.net/u/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Royal Road", "url": "https://www.royalroad.com/profile/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Scribble Hub", "url": "https://www.scribblehub.com/profile/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "MyFigureCollection", "url": "https://myfigurecollection.net/profile/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Discmania", "url": "https://www.pdga.com/player/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Fishing Booker", "url": "https://fishingbooker.com/captain/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "iNaturalist", "url": "https://www.inaturalist.org/people/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "eBird", "url": "https://ebird.org/profile/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "AllRecipes", "url": "https://www.allrecipes.com/cook/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Cookpad", "url": "https://cookpad.com/us/users/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Homebrew Talk", "url": "https://www.homebrewtalk.com/members/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Fiverr", "url": "https://www.fiverr.com/{username}", "check": "status_code", "valid": 200, "category": "freelance"},
+  {"name": "Upwork", "url": "https://www.upwork.com/freelancers/~{username}", "check": "status_code", "valid": 200, "category": "freelance"},
+  {"name": "Freelancer", "url": "https://www.freelancer.com/u/{username}", "check": "status_code", "valid": 200, "category": "freelance"},
+  {"name": "Toptal", "url": "https://www.toptal.com/resume/{username}", "check": "status_code", "valid": 200, "category": "freelance"},
+  {"name": "PeoplePerHour", "url": "https://www.peopleperhour.com/freelancer/{username}", "check": "status_code", "valid": 200, "category": "freelance"},
+  {"name": "99designs", "url": "https://99designs.com/profiles/{username}", "check": "status_code", "valid": 200, "category": "freelance"},
+  {"name": "Contra", "url": "https://contra.com/{username}", "check": "status_code", "valid": 200, "category": "freelance"},
+  {"name": "AngelList", "url": "https://angel.co/u/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Wellfound", "url": "https://wellfound.com/u/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Glassdoor", "url": "https://www.glassdoor.com/member/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Indeed", "url": "https://my.indeed.com/p/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Xing", "url": "https://www.xing.com/profile/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Polywork", "url": "https://www.polywork.com/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Read.cv", "url": "https://read.cv/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Peerlist", "url": "https://peerlist.io/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "The Dots", "url": "https://the-dots.com/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Huntr", "url": "https://huntr.co/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Lunchclub", "url": "https://lunchclub.com/in/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "F6S", "url": "https://www.f6s.com/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Crunchbase", "url": "https://www.crunchbase.com/person/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Mixpanel", "url": "https://mixpanel.com/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Spotify Podcasters", "url": "https://podcasters.spotify.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "Anchor", "url": "https://anchor.fm/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "Lemon8", "url": "https://www.lemon8-app.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "Fanhouse", "url": "https://fanhouse.app/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "OnlyFans", "url": "https://onlyfans.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "Fansly", "url": "https://fansly.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "Throne", "url": "https://throne.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "Streamlabs", "url": "https://streamlabs.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "StreamElements", "url": "https://streamelements.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "Tipeee", "url": "https://en.tipeee.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "Throne", "url": "https://throne.com/{username}", "check": "status_code", "valid": 200, "category": "content"},
+  {"name": "OpenStreetMap", "url": "https://www.openstreetmap.org/user/{username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "Mapillary", "url": "https://www.mapillary.com/app/user/{username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "Wikiloc", "url": "https://www.wikiloc.com/wikiloc/user.do?name={username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "Waze", "url": "https://www.waze.com/user/editor/{username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "Apple Maps Connect", "url": "https://mapsconnect.apple.com/u/{username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "Wikipedia", "url": "https://en.wikipedia.org/wiki/User:{username}", "check": "status_code", "valid": 200, "category": "wiki"},
+  {"name": "Fandom", "url": "https://community.fandom.com/wiki/User:{username}", "check": "status_code", "valid": 200, "category": "wiki"},
+  {"name": "Wikidata", "url": "https://www.wikidata.org/wiki/User:{username}", "check": "status_code", "valid": 200, "category": "wiki"},
+  {"name": "Wikimedia Commons", "url": "https://commons.wikimedia.org/wiki/User:{username}", "check": "status_code", "valid": 200, "category": "wiki"},
+  {"name": "Bulbapedia", "url": "https://bulbapedia.bulbagarden.net/wiki/User:{username}", "check": "status_code", "valid": 200, "category": "wiki"},
+  {"name": "Minecraft Wiki", "url": "https://minecraft.wiki/w/User:{username}", "check": "status_code", "valid": 200, "category": "wiki"},
+  {"name": "Roblox Wiki", "url": "https://roblox.fandom.com/wiki/User:{username}", "check": "status_code", "valid": 200, "category": "wiki"},
+  {"name": "Twitch Wiki", "url": "https://twitchpedia.fandom.com/wiki/User:{username}", "check": "status_code", "valid": 200, "category": "wiki"},
+  {"name": "DnD Beyond", "url": "https://www.dndbeyond.com/members/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Roll20", "url": "https://app.roll20.net/users/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Crypto Twitter", "url": "https://www.dextools.io/app/user/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "Etherscan", "url": "https://etherscan.io/address/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "ENS Domains", "url": "https://app.ens.domains/{username}.eth", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "Mirror.xyz", "url": "https://mirror.xyz/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "DeBank", "url": "https://debank.com/profile/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "Zapper", "url": "https://zapper.xyz/account/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "Lens Protocol", "url": "https://lenster.xyz/u/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "Nansen", "url": "https://portfolio.nansen.ai/profile/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "CoinGecko", "url": "https://www.coingecko.com/en/users/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "TradingView", "url": "https://www.tradingview.com/u/{username}", "check": "status_code", "valid": 200, "category": "crypto"},
+  {"name": "Seeking Alpha", "url": "https://seekingalpha.com/user/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "StockTwits", "url": "https://stocktwits.com/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "WeBull", "url": "https://www.webull.com/user/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "eToro", "url": "https://www.etoro.com/people/{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Public.com", "url": "https://public.com/@{username}", "check": "status_code", "valid": 200, "category": "finance"},
+  {"name": "Kali Forums", "url": "https://forums.kali.org/member.php?username={username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "OffSec", "url": "https://www.offsec.com/community/user/{username}", "check": "status_code", "valid": 200, "category": "security"},
+  {"name": "Snap Store", "url": "https://snapcraft.io/publisher/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Flathub", "url": "https://flathub.org/apps/collection/developer/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "AUR", "url": "https://aur.archlinux.org/account/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Homebrew", "url": "https://formulae.brew.sh/formula/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Conan", "url": "https://conan.io/center/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Maven Central", "url": "https://central.sonatype.com/namespace/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "NuGet", "url": "https://www.nuget.org/profiles/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Pub.dev", "url": "https://pub.dev/publishers/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Hex.pm", "url": "https://hex.pm/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Haskell Hackage", "url": "https://hackage.haskell.org/user/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "CPAN", "url": "https://metacpan.org/author/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "LuaRocks", "url": "https://luarocks.org/modules/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "VS Code Marketplace", "url": "https://marketplace.visualstudio.com/publishers/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Chrome Web Store", "url": "https://chromewebstore.google.com/detail/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Firefox Add-ons", "url": "https://addons.mozilla.org/en-US/firefox/user/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Hugging Face", "url": "https://huggingface.co/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Weights & Biases", "url": "https://wandb.ai/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Papers with Code", "url": "https://paperswithcode.com/author/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Observable", "url": "https://observablehq.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Streamlit", "url": "https://share.streamlit.io/user/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Vercel", "url": "https://vercel.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Netlify", "url": "https://app.netlify.com/teams/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Railway", "url": "https://railway.app/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Render", "url": "https://render.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Fly.io", "url": "https://fly.io/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Heroku", "url": "https://{username}.herokuapp.com", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Mastodon.online", "url": "https://mastodon.online/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Mastodon.world", "url": "https://mastodon.world/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Fosstodon", "url": "https://fosstodon.org/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Hachyderm", "url": "https://hachyderm.io/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Infosec Exchange", "url": "https://infosec.exchange/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Techhub.social", "url": "https://techhub.social/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "mstdn.social", "url": "https://mstdn.social/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Pixelfed", "url": "https://pixelfed.social/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Misskey.io", "url": "https://misskey.io/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Calckey", "url": "https://calckey.social/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Peertube Videos", "url": "https://videos.scanlines.xyz/accounts/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Funkwhale", "url": "https://open.audio/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Bookwyrm", "url": "https://bookwyrm.social/user/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Lichess Team", "url": "https://lichess.org/team/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "GG.deals", "url": "https://gg.deals/user/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "GOG", "url": "https://www.gog.com/u/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "itch.io", "url": "https://{username}.itch.io", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Game Jolt", "url": "https://gamejolt.com/@{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Tabletop Simulator", "url": "https://steamcommunity.com/sharedfiles/filedetails/?id={username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "CurseForge", "url": "https://www.curseforge.com/members/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Modrinth", "url": "https://modrinth.com/user/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Nexus Mods", "url": "https://www.nexusmods.com/users/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Mod.io", "url": "https://mod.io/members/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Overwolf", "url": "https://www.overwolf.com/profile/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Recraft", "url": "https://www.recraft.ai/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Civitai", "url": "https://civitai.com/user/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Tensor.art", "url": "https://tensor.art/u/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Sketchfab", "url": "https://sketchfab.com/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "CGTrader", "url": "https://www.cgtrader.com/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "TurboSquid", "url": "https://www.turbosquid.com/Search/Artists/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Colab", "url": "https://colab.research.google.com/github/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Gitpod", "url": "https://gitpod.io/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "CodeSandbox", "url": "https://codesandbox.io/u/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "StackBlitz", "url": "https://stackblitz.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Deepnote", "url": "https://deepnote.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Overleaf", "url": "https://www.overleaf.com/u/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "HuggingFace Spaces", "url": "https://huggingface.co/spaces/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Replicate", "url": "https://replicate.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Daily.dev", "url": "https://app.daily.dev/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "WakaTime", "url": "https://wakatime.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "LeetCode Discuss", "url": "https://leetcode.com/discuss/user/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "GeeksForGeeks", "url": "https://auth.geeksforgeeks.org/user/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "AtCoder", "url": "https://atcoder.jp/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "SPOJ", "url": "https://www.spoj.com/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Project Euler", "url": "https://projecteuler.net/profile/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Advent of Code", "url": "https://adventofcode.com/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Rosalind", "url": "https://rosalind.info/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Codewars", "url": "https://www.codewars.com/users/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Edabit", "url": "https://edabit.com/user/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "freeCodeCamp Forum", "url": "https://forum.freecodecamp.org/u/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Laravel Forge", "url": "https://forge.laravel.com/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Laracasts", "url": "https://laracasts.com/@{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "DEV Community", "url": "https://dev.to/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Codesignal", "url": "https://app.codesignal.com/profile/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "InterviewBit", "url": "https://www.interviewbit.com/profile/{username}", "check": "status_code", "valid": 200, "category": "development"},
+  {"name": "Naukri", "url": "https://www.naukri.com/{username}", "check": "status_code", "valid": 200, "category": "professional"},
+  {"name": "Behance Projects", "url": "https://www.behance.net/{username}/projects", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Society6", "url": "https://society6.com/{username}", "check": "status_code", "valid": 200, "category": "art"},
+  {"name": "Zazzle", "url": "https://www.zazzle.com/store/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Spreadshirt", "url": "https://www.spreadshirt.com/shop/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "TeePublic", "url": "https://www.teepublic.com/user/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Creative Market", "url": "https://creativemarket.com/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Envato", "url": "https://themeforest.net/user/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "UI8", "url": "https://ui8.net/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Lemmy.ml", "url": "https://lemmy.ml/u/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Beehaw", "url": "https://beehaw.org/u/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Programming.dev", "url": "https://programming.dev/u/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Lemm.ee", "url": "https://lemm.ee/u/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "sh.itjust.works", "url": "https://sh.itjust.works/u/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Hive Social", "url": "https://www.hivesocial.app/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Post.news", "url": "https://post.news/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Spoutible", "url": "https://spoutible.com/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "T2.social", "url": "https://t2.social/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Counter.social", "url": "https://counter.social/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Secure Scuttlebutt", "url": "https://viewer.scuttlebot.io/@{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Are.na", "url": "https://www.are.na/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Urbit", "url": "https://urbit.org/ids/{username}", "check": "status_code", "valid": 200, "category": "social"},
+  {"name": "Habitica", "url": "https://habitica.com/profile/{username}", "check": "status_code", "valid": 200, "category": "hobby"},
+  {"name": "Kongregate", "url": "https://www.kongregate.com/accounts/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Armor Games", "url": "https://armorgames.com/user/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Miniclip", "url": "https://www.miniclip.com/games/profile/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Tabletopia", "url": "https://tabletopia.com/users/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Board Game Arena", "url": "https://boardgamearena.com/player?id={username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Catan Universe", "url": "https://catanuniverse.com/user/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Tabletop Playground", "url": "https://tabletop-playground.com/user/{username}", "check": "status_code", "valid": 200, "category": "gaming"},
+  {"name": "Ask Ubuntu", "url": "https://askubuntu.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Server Fault", "url": "https://serverfault.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Super User", "url": "https://superuser.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Math StackExchange", "url": "https://math.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Security StackExchange", "url": "https://security.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Unix StackExchange", "url": "https://unix.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Apple StackExchange", "url": "https://apple.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "WordPress StackExchange", "url": "https://wordpress.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "GameDev StackExchange", "url": "https://gamedev.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Anime StackExchange", "url": "https://anime.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Photography StackExchange", "url": "https://photo.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Travel StackExchange", "url": "https://travel.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Music StackExchange", "url": "https://music.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Cooking StackExchange", "url": "https://cooking.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Physics StackExchange", "url": "https://physics.stackexchange.com/users/{username}", "check": "status_code", "valid": 200, "category": "forums"},
+  {"name": "Reverb", "url": "https://reverb.com/shop/{username}", "check": "status_code", "valid": 200, "category": "shopping"},
+  {"name": "Bandcamp Fan", "url": "https://bandcamp.com/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Setlist.fm", "url": "https://www.setlist.fm/user/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Songkick", "url": "https://www.songkick.com/users/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "ListenBrainz", "url": "https://listenbrainz.org/user/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "MusicBrainz", "url": "https://musicbrainz.org/user/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Splice", "url": "https://splice.com/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Landr", "url": "https://www.landr.com/artist/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Beatstars", "url": "https://www.beatstars.com/{username}", "check": "status_code", "valid": 200, "category": "music"},
+  {"name": "Maps.me", "url": "https://maps.me/user/{username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "Citymapper", "url": "https://citymapper.com/user/{username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "Gaia GPS", "url": "https://www.gaiagps.com/profile/{username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "Peakbagger", "url": "https://www.peakbagger.com/climber/{username}", "check": "status_code", "valid": 200, "category": "geo"},
+  {"name": "CalTopo", "url": "https://caltopo.com/u/{username}", "check": "status_code", "valid": 200, "category": "geo"}
+]
