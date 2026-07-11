@@ -1,6 +1,6 @@
 # Argis
 
-**The all-seeing OSINT scanner.** Hunt down accounts across 133+ platforms and track how a username's footprint changes over time.
+**The all-seeing OSINT scanner.** Hunt down accounts across 509 platforms and track how a username's footprint changes over time.
 
 <div class="grid cards" markdown>
 
@@ -8,7 +8,7 @@
 
     ---
 
-    Search 133+ social, coding, gaming, and creative platforms for a username in seconds.
+    Search 509 social, coding, gaming, and creative platforms for a username in seconds.
 
     [:octicons-arrow-right-24: Scan command](commands/scan.md)
 
@@ -75,7 +75,7 @@ argis recon example.com -sv -os -df
 
 ## Features
 
-- :material-account-search: **133+ Platforms** — social media, coding forums, gaming, creative, professional, and more
+- :material-account-search: **509 Platforms** — social media, coding forums, gaming, creative, professional, and more
 - :material-lightning-bolt: **Async Engine** — concurrent checks with HTTP/2 support, retry with backoff
 - :material-web: **Nmap-style Recon** — port scan, service version detection, OS detection, UDP scan, traceroute
 - :material-dns: **DNS & WHOIS** — resolve records, lookup domain ownership

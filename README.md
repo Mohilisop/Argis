@@ -21,7 +21,7 @@ Named after **Argus Panoptes**, the hundred-eyed giant of Greek myth — every p
 
 ## Features
 
-- :mag: **133+ platforms** — social, coding, gaming, creative, professional, and more
+- :mag: **509 platforms** — social, coding, gaming, creative, professional, and more
 - :zap: **Async engine** — concurrent scanning with HTTP/2 support
 - :computer: **Nmap-style recon** — port scan, service version detection, OS detection, UDP scan, traceroute
 - :globe_with_meridians: **DNS & WHOIS** — resolve records, lookup domain ownership
@@ -115,7 +115,7 @@ Variant generation covers separators, affixes, digit-leet, Unicode homoglyphs, a
 
 | Command | Description |
 |---------|-------------|
-| `scan` | Search username across 133+ platforms |
+| `scan` | Search username across 509 platforms |
 | `scan-image` | OCR a screenshot for usernames/URLs |
 | `scan-face` | Detect faces and reverse-search |
 | `doctor` | Health-check every site rule and flag rot |

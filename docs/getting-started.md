@@ -2,7 +2,7 @@
 
 ## Your First Scan
 
-Scan a username across all 133+ platforms:
+Scan a username across all 509 platforms:
 
 ```bash
 argis scan johndoe

@@ -90,7 +90,7 @@ footer{margin-top:32px;text-align:center;color:var(--dim);font-size:11px;padding
 <div class=container>
 <header>
 <h1><span class=green>argis</span><span class=dim> scan</span></h1>
-<p>username reconnaissance &middot; 133 platforms</p>
+<p>username reconnaissance &middot; 509 platforms</p>
 </header>
 <div class=scan-box>
 <form class=scan-form id=form>

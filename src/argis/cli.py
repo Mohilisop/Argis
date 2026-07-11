@@ -62,7 +62,7 @@ def main(
 
         groups = {
                 "Username Scanning": [
-                    ("scan <username>", "Search a username across 133 platforms"),
+                    ("scan <username>", "Search a username across 509 platforms"),
                     ("scan-image <img>", "Extract usernames/URLs from a screenshot via OCR"),
                     ("scan-face <img>", "Detect faces and reverse-search them for profiles"),
                 ],
