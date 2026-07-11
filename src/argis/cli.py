@@ -254,6 +254,9 @@ def scan(
         None, "--pdf",
         help="Export a PDF dossier at this path (needs weasyprint or playwright)."
     ),
+    min_confidence: int = typer.Option(
+        0, "--min-confidence", "-mc",
+        help="Only show hits above this confidence (0-100). Try 60 for clean output."),
 ):
     """Search for a target username across all configured platforms.
 
@@ -362,6 +365,13 @@ def scan(
         if save:
             diffmod.save_scan(username, results)
         return
+
+    if min_confidence > 0:
+        total_found = sum(1 for r in results.values() if r.get("status") == "FOUND")
+        results = {p: r for p, r in results.items() if r.get("confidence", 100) >= min_confidence}
+        kept = sum(1 for r in results.values() if r.get("status") == "FOUND")
+        if not quiet:
+            console.print(f"[dim]Confidence filter \u2265 {min_confidence}: {kept}/{total_found} hits shown[/dim]")
 
     if not quiet:
         _display_scan_results(results, username, all, verbose, emails, status_filter)

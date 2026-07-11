@@ -10,6 +10,7 @@ import httpx
 
 from argis.exceptions import SiteConfigError
 from argis.utils.display import console, make_progress, print_found
+from argis.utils.extract_utils import clean_emails, visible_html
 from argis.utils.network import build_client, random_user_agent
 
 _CHALLENGE_MARKERS = (
@@ -17,7 +18,8 @@ _CHALLENGE_MARKERS = (
     "verify you are human", "just a moment...", "captcha",
     "making sure you're not a bot", "making sure you\u2019re not a bot",
     "enable javascript and cookies", "ddos-guard", "cf-browser-verification",
-    "please verify you are a human", "__cf_chl",
+    "please verify you are a human", "__cf_chl", "px-captcha",
+    "incapsula", "perimeterx", "are you a robot",
     "making sure you&#39;re not a bot", "&#39;re not a bot",
     "please wait", "please stand by", "verify your browser",
 )
@@ -39,13 +41,6 @@ _META_DESC_RE = re.compile(
     r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']*)["\']',
     re.IGNORECASE,
 )
-_STRIP_TAGS_RE = re.compile(r"<(script|style|noscript|template)\b[^>]*>.*?</\1>",
-                            re.I | re.S)
-
-
-def visible_html(html: str) -> str:
-    """Remove script/style/etc so extractors only see rendered content."""
-    return _STRIP_TAGS_RE.sub(" ", html)
 
 
 def _looks_generic(title: str, platform: str) -> bool:
@@ -58,6 +53,36 @@ def _looks_generic(title: str, platform: str) -> bool:
     if low.startswith(plat_low + " -") or low.startswith(plat_low + " \u2022"):
         return True
     return any(s in low for s in _SOFT_404_TITLES)
+
+
+def _confidence_score(text: str, rules: dict, has_username_in_title: bool = False) -> int:
+    """Score 0-100 for how confident we are this is a real profile."""
+    score = 0
+    low = text.lower()[:8000]
+
+    et = rules.get("error_type")
+    if et in ("message", "response_url"):
+        score += 40
+    elif et == "status_code" and rules.get("error_criteria") != 404:
+        score += 35
+    else:
+        score += 20
+
+    if has_username_in_title:
+        score += 25
+
+    if len(text) > 3000:
+        score += 15
+    elif len(text) > 1500:
+        score += 8
+
+    if "og:image" in low and "default" not in low:
+        score += 10
+
+    if "og:description" in low or 'name="description"' in low:
+        score += 10
+
+    return min(score, 100)
 
 
 def _categorize_error(exc: BaseException) -> str:
@@ -230,7 +255,6 @@ class ArgisEngine:
             return {"status": "NOT_FOUND", "url": target_url}
 
         if response.status_code == 200:
-            from argis.correlate import clean_emails
             emails = clean_emails(_EMAIL_RE.findall(text))
             title_match = _TITLE_RE.search(response.text[:5000])
             title = title_match.group(1).strip() if title_match else ""
@@ -238,12 +262,15 @@ class ArgisEngine:
                 return {"status": "NOT_FOUND", "url": target_url}
             desc_match = _META_DESC_RE.search(response.text[:5000])
             description = desc_match.group(1).strip() if desc_match else None
+            has_user = self.username.lower() in title.lower()
+            conf = _confidence_score(response.text[:8000], rules, has_user)
             return {
                 "status": "FOUND",
                 "url": target_url,
                 "title": title,
                 "description": description,
                 "emails": emails,
+                "confidence": conf,
             }
 
         return {"status": "UNKNOWN", "url": target_url, "error": f"HTTP_{response.status_code}"}

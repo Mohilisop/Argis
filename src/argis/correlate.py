@@ -23,7 +23,7 @@ import re
 from dataclasses import dataclass, field
 
 from argis.intel_http import AsyncFetcher
-
+from argis.utils.extract_utils import visible_html, clean_emails, clean_display_name
 from argis.utils.network import random_user_agent
 
 try:
@@ -56,73 +56,12 @@ _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 _LINK = re.compile(r'href=["\'](https?://[^"\']+)["\']', re.I)
 _EMAIL = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 _WORD = re.compile(r"[a-z0-9]+")
-_STRIP_TAGS_RE = re.compile(r"<(script|style|noscript|template)\b[^>]*>.*?</\1>",
-                            re.I | re.S)
 
 _STOP_DOMAINS = {
     "twitter.com", "x.com", "facebook.com", "instagram.com", "youtube.com",
     "google.com", "apple.com", "microsoft.com", "github.com", "linkedin.com",
     "t.co", "bit.ly", "cdn.jsdelivr.net", "gravatar.com", "gstatic.com",
 }
-
-_EMAIL_BLOCK_DOMAINS = {
-    "sentry.io", "ingest.us.sentry.io", "ingest.sentry.io",
-    "automattic.com", "wordpress.com", "gravatar.com",
-    "sentry-next.wixpress.com", "wixpress.com", "example.com",
-    "domain.com", "email.com", "yourdomain.com",
-    "test.com", "testing.com", "gg.com", "techaro.lol",
-    "example.org",
-}
-_EMAIL_BLOCK_LOCAL = {
-    "noreply", "no-reply", "donotreply", "support", "hello", "info",
-    "admin", "webmaster", "postmaster", "privacy", "privacypolicyupdates",
-    "abuse", "security", "sentry", "root", "mailer-daemon",
-}
-_EMAIL_JUNK_RE = re.compile(r"\.(?:jpg|jpeg|png|gif|webp|svg|css|js|woff2?)\b", re.I)
-_HEXish_RE = re.compile(r"^[0-9a-f]{12,}$", re.I)
-
-_NOTFOUND_TITLES = {
-    "profile not found", "user not found", "page not found", "not found",
-    "sign up", "log in", "login", "undefined", "page isn't available",
-    "this page isn't available", "error", "404", "whoops",
-}
-
-
-def visible_html(html: str) -> str:
-    """Remove script/style/etc so extractors only see rendered content."""
-    return _STRIP_TAGS_RE.sub(" ", html)
-
-
-def _valid_email(addr: str) -> bool:
-    addr = addr.strip().strip(".").lower()
-    if "@" not in addr:
-        return False
-    local, _, domain = addr.partition("@")
-    if not local or not domain or "." not in domain:
-        return False
-    if _EMAIL_JUNK_RE.search(addr):
-        return False
-    if _HEXish_RE.match(local) or len(local) > 40:
-        return False
-    if any(domain == d or domain.endswith("." + d) for d in _EMAIL_BLOCK_DOMAINS):
-        return False
-    if any(local.startswith(p + "+") or local == p for p in _EMAIL_BLOCK_LOCAL):
-        return False
-    return True
-
-
-def clean_emails(raw: list[str]) -> list[str]:
-    seen: set[str] = set()
-    out: list[str] = []
-    for e in raw:
-        e2 = e.strip().strip(".")
-        key = e2.lower()
-        if key in seen:
-            continue
-        if _valid_email(e2):
-            seen.add(key)
-            out.append(e2)
-    return out
 
 
 @dataclass
@@ -183,18 +122,6 @@ def _reg_domain(url: str) -> str:
     return ".".join(parts[-2:]) if len(parts) >= 2 else host
 
 
-def _clean_display_name(raw: str, platform: str, handle: str) -> str:
-    name = re.split(r"[·|–—\-]", raw)[0].strip()
-    name = re.sub(r"\(@?" + re.escape(handle) + r"\)", "", name, flags=re.I).strip()
-    name = re.sub(r"@" + re.escape(handle), "", name, flags=re.I).strip()
-    low = name.lower()
-    if low in (platform.lower(), handle.lower()):
-        return ""
-    if low in _NOTFOUND_TITLES:
-        return ""
-    return name
-
-
 async def _fetch_signals(
     fetcher, platform: str, url: str, handle: str,
     fetch_avatar: bool,
@@ -218,7 +145,7 @@ async def _fetch_signals(
         name = m.group(1)
     elif (mt := _TITLE.search(html)):
         name = mt.group(1)
-    sig.display_name = _clean_display_name(name, platform, handle)
+    sig.display_name = clean_display_name(name, platform, handle)
 
     d = _OG_DESC.search(html) or _META_DESC.search(html)
     if d:
