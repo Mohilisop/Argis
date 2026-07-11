@@ -156,20 +156,16 @@ def _improbable_username(length: int = 24) -> str:
 
 def _detect_duplicates(sites_path: pathlib.Path) -> list[str]:
     """Return platform names defined more than once in sites.json."""
-    seen: dict[str, int] = defaultdict(int)
-
-    def _hook(pairs):
-        for key, _ in pairs:
-            seen[key] += 1
-        return dict(pairs)
-
+    import json
     with open(sites_path, "r", encoding="utf-8") as fh:
-        json.load(fh, object_pairs_hook=_hook)
-    # Filter out JSON meta-keys that appear as top-level keys of every rule
-    meta = {"category", "error_criteria", "error_type", "url"}
-    return sorted(
-        name for name, count in seen.items() if count > 1 and name not in meta
-    )
+        raw = json.load(fh)
+    if isinstance(raw, list):
+        # List format — no top-level key duplication possible
+        return []
+    seen: dict[str, int] = defaultdict(int)
+    for name in raw:
+        seen[name] += 1
+    return sorted(name for name, count in seen.items() if count > 1)
 
 
 class HealthChecker:
@@ -190,7 +186,24 @@ class HealthChecker:
             else (pathlib.Path(__file__).parent / "sites.json")
         )
         with open(self.sites_path, "r", encoding="utf-8") as fh:
-            sites = json.load(fh)
+            raw = json.load(fh)
+        if isinstance(raw, list):
+            sites = {}
+            for item in raw:
+                name = item.get("name", "unknown")
+                url = item["url"].replace("{username}", "{}").replace("{user}", "{}").replace("{0}", "{}")
+                rules = {"url": url, "category": item.get("category", "uncategorized")}
+                check = item.get("check", "status_code")
+                valid = item.get("valid", 200)
+                if check == "status_code":
+                    rules["error_type"] = "status_code"
+                    rules["error_criteria"] = "404"
+                elif check == "response_body":
+                    rules["error_type"] = "message"
+                    rules["error_criteria"] = item.get("error_msg", "")
+                sites[name] = rules
+        else:
+            sites = raw
         if only:
             only_l = {o.lower() for o in only}
             sites = {n: r for n, r in sites.items() if n.lower() in only_l}

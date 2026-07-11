@@ -150,15 +150,32 @@ class ArgisEngine:
             raise SiteConfigError(f"sites.json not found at {path}")
         try:
             with open(path, "r", encoding="utf-8") as fh:
-                sites = json.load(fh)
+                raw = json.load(fh)
         except json.JSONDecodeError as exc:
             raise SiteConfigError(f"sites.json is not valid JSON: {exc}") from exc
 
-        for name, rules in sites.items():
-            if "url" not in rules or "error_type" not in rules:
-                raise SiteConfigError(
-                    f"Site '{name}' is missing required 'url' or 'error_type' key"
-                )
+        if isinstance(raw, list):
+            sites = {}
+            for item in raw:
+                name = item.get("name", "unknown")
+                url = item["url"].replace("{username}", "{}").replace("{user}", "{}").replace("{0}", "{}")
+                rules = {"url": url, "category": item.get("category", "uncategorized")}
+                check = item.get("check", "status_code")
+                valid = item.get("valid", 200)
+                if check == "status_code":
+                    rules["error_type"] = "status_code"
+                    rules["error_criteria"] = "404"
+                elif check == "response_body":
+                    rules["error_type"] = "message"
+                    rules["error_criteria"] = item.get("error_msg", "")
+                sites[name] = rules
+        else:
+            sites = raw
+            for name, rules in sites.items():
+                if "url" not in rules or "error_type" not in rules:
+                    raise SiteConfigError(
+                        f"Site '{name}' is missing required 'url' or 'error_type' key"
+                    )
         return sites
 
     def _filter_sites(self) -> dict:
@@ -334,10 +351,11 @@ class ArgisEngine:
 def extract_categories(sites_path: pathlib.Path | None = None) -> list[str]:
     path = sites_path or (pathlib.Path(__file__).parent / "sites.json")
     with open(path, "r", encoding="utf-8") as fh:
-        sites = json.load(fh)
+        raw = json.load(fh)
     cats = set()
-    for rules in sites.values():
-        cat = rules.get("category", "uncategorized")
+    data = raw if isinstance(raw, list) else raw.values()
+    for entry in data:
+        cat = entry.get("category", "uncategorized") if isinstance(entry, dict) else "uncategorized"
         cats.add(cat.lower())
     return sorted(cats)
 
