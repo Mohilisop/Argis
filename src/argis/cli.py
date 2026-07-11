@@ -67,6 +67,7 @@ def main(
                     ("scan-face <img>", "Detect faces and reverse-search them for profiles"),
                 ],
                 "Intelligence": [
+                    ("me <username>", "Full self-assessment: scan, breach, impersonation, geo, mentions"),
                     ("breach <username>", "Check extracted emails against known data breaches (HIBP)"),
                     ("mentions <username>", "Search for handle in pastes, code, and Google dorks"),
                     ("locate <username>", "Infer probable geographic region from profile metadata"),
@@ -2222,6 +2223,102 @@ def locate(
     else:
         console.print("[dim]Not enough signals to infer location.[/dim]")
     console.print("\n[dim]Based on public profile metadata only. Not GPS/IP tracking.[/dim]")
+
+
+@app.command(rich_help_panel="Intelligence")
+def me(
+    username: str = typer.Argument(..., help="YOUR handle. This is a self-assessment."),
+    skip_impersonation: bool = typer.Option(
+        False, "--skip-impersonation",
+        help="Skip the lookalike scan (faster, less thorough)."),
+    max_variants: int = typer.Option(60, "--max-variants"),
+    timeout: float = typer.Option(12.0, "--timeout"),
+    concurrency: int = typer.Option(20, "--concurrency"),
+    proxy: Optional[str] = typer.Option(None, "--proxy"),
+    tor: bool = typer.Option(False, "--tor"),
+):
+    """Full self-assessment: how exposed am I, and what do I fix first?
+
+    Runs the entire Argis intelligence stack on YOUR handle in one shot:
+    scan, exposure score, breach check, impersonation hunt, geo inference,
+    and paste/code mentions. Outputs a unified threat report with a ranked
+    fix-list.
+
+    \b
+    Examples:
+      argis me johndoe
+      argis me johndoe --skip-impersonation
+    """
+    from argis.me import run_me
+
+    start = time.time()
+    console.print(f"\n[bold green]ARGIS SELF-ASSESSMENT[/bold green] "
+                  f"[dim]target: @{username}[/dim]\n")
+
+    report = asyncio.run(run_me(
+        username, timeout=timeout, concurrency=concurrency,
+        proxy=proxy, use_tor=tor, skip_impersonation=skip_impersonation,
+        max_variants=max_variants,
+    ))
+    elapsed = time.time() - start
+
+    # risk level banner
+    risk_color = {"HIGH": "bold red", "MEDIUM": "bold yellow", "LOW": "bold green"}
+    rc = risk_color[report.risk_level]
+    panel = Panel(
+        f"[{rc}]{report.risk_level} RISK[/{rc}]\n"
+        f"[dim]exposure {report.exposure_score:.0f}/100 ({report.exposure_grade}) \u00b7 "
+        f"{report.emails_breached} email(s) breached \u00b7 "
+        f"{report.impersonators_found} impersonator(s)[/dim]",
+        title="[bold]\U0001f6e1\ufe0f threat level[/bold]",
+        border_style=report.risk_level.lower(),
+    )
+    console.print()
+    console.print(panel)
+
+    console.print(
+        f"  [green]{report.accounts_found}[/green] accounts found \u00b7 "
+        f"[cyan]{report.platforms_scanned}[/cyan] scanned \u00b7 "
+        f"[dim]{elapsed:.1f}s[/dim]\n"
+    )
+
+    if report.breaches:
+        compromised = [b for b in report.breaches if b.compromised]
+        if compromised:
+            console.print("[bold red]\u26a0 BREACHED EMAILS[/bold red]")
+            for b in compromised:
+                names = ", ".join(br.name for br in b.breaches[:4])
+                console.print(f"  [red]\u2716[/red] {b.email} \u2014 {len(b.breaches)} breach(es): {names}")
+            console.print()
+
+    if report.impersonators_found > 0:
+        console.print("[bold red]\u26a0 IMPERSONATORS DETECTED[/bold red]")
+        for imp in report.impersonators[:5]:
+            console.print(f"  [red]\u2716[/red] {imp.variant} on {imp.platform} "
+                          f"[dim]({imp.score:.0%} match)[/dim]")
+        console.print()
+
+    if report.geo_signals:
+        top = report.geo_signals[0]
+        console.print(f"  [cyan]\U0001f4cd probable location:[/cyan] {top.country} "
+                      f"[dim]({top.confidence:.0%} \u2014 {top.evidence})[/dim]\n")
+
+    if report.code_mentions > 0:
+        console.print(f"  [yellow]\u26a0[/yellow] {report.code_mentions} public code/paste mention(s) found\n")
+
+    if report.actions:
+        console.print("[bold]FIX THESE FIRST:[/bold]")
+        for a in report.actions[:7]:
+            where_str = f"\n     [dim]\u2192 {', '.join(a.where[:4])}[/dim]" if a.where else ""
+            console.print(
+                f"  [bold]{a.priority}.[/bold] {a.what}"
+                f"  [green](\u2212{a.points_saved:.0f} pts)[/green]{where_str}")
+        console.print()
+    else:
+        console.print("[green]Nothing critical to fix. Footprint is lean.[/green]\n")
+
+    console.print(f"[dim]Full assessment in {elapsed:.1f}s. "
+                  f"Re-run after fixes to see your score drop.[/dim]")
 
 
 @app.command(rich_help_panel="Utilities")
