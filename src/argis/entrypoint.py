@@ -14,13 +14,13 @@ from argis.diff import load_history
 from argis.dossier_runtime import install_dossier_repair
 from argis.echo import analyze_echo
 from argis.exceptions import HistoryError
+from argis.media_review import register_media_review_command
 from argis.media_runtime import install_media_capture
 from argis.utils.display import console
 
-# Preserve validated avatars and guarantee that generated dossier JavaScript is
-# syntactically valid before the CLI writes the HTML file.
 install_media_capture()
 install_dossier_repair()
+register_media_review_command(app)
 
 
 @app.command("echo", rich_help_panel="History & Tracking")
