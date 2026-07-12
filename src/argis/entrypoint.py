@@ -14,6 +14,7 @@ from argis.diff import load_history
 from argis.dossier_runtime import install_dossier_repair
 from argis.echo import analyze_echo
 from argis.exceptions import HistoryError
+from argis.media_decisions import register_media_decision_commands
 from argis.media_review import register_media_review_command
 from argis.media_runtime import install_media_capture
 from argis.utils.display import console
@@ -21,6 +22,7 @@ from argis.utils.display import console
 install_media_capture()
 install_dossier_repair()
 register_media_review_command(app)
+register_media_decision_commands(app)
 
 
 @app.command("echo", rich_help_panel="History & Tracking")
@@ -31,14 +33,7 @@ def echo_command(
     json_output: bool = typer.Option(False, "--json", help="Print the complete Echo report as JSON."),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Write the complete Echo report to a JSON file."),
 ) -> None:
-    """Detect coordinated identity drift across saved scans.
-
-    Examples:
-        argis echo johndoe
-        argis echo johndoe --window 24 --min-confidence 70
-        argis echo johndoe --json
-        argis echo johndoe -o johndoe-echo.json
-    """
+    """Detect coordinated identity drift across saved scans."""
     try:
         history = load_history(username)
     except HistoryError as exc:
@@ -54,7 +49,6 @@ def echo_command(
 
     report = analyze_echo(history, username, coordination_window_hours=window, minimum_confidence=min_confidence)
     payload = json.dumps(report, indent=2, ensure_ascii=False)
-
     if output is not None:
         output_path = output.expanduser().resolve()
         if output_path.suffix.lower() != ".json":
@@ -62,7 +56,6 @@ def echo_command(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(payload, encoding="utf-8")
         console.print(f"[green]Echo report written -> [underline]{output_path}[/underline][/green]")
-
     if json_output:
         console.print_json(payload)
         return
@@ -77,7 +70,6 @@ def _print_echo_report(report: dict, username: str, window: int) -> None:
         stability_style, stability_label = "yellow", "DRIFTING"
     else:
         stability_style, stability_label = "red", "VOLATILE"
-
     events = report.get("events", [])
     summary = (
         f"[bold]@{username}[/bold]\n"
@@ -87,13 +79,11 @@ def _print_echo_report(report: dict, username: str, window: int) -> None:
         f"Identity epochs: [cyan]{report.get('identity_epochs', 0)}[/cyan]  Echo events: [cyan]{len(events)}[/cyan]"
     )
     console.print(Panel(summary, title="[bold green]ARGIS ECHO[/bold green]", border_style="green"))
-
     for warning in report.get("warnings", []):
         console.print(f"[yellow]! {warning}[/yellow]")
     if not events:
         console.print("[dim]No coordinated identity drift crossed the confidence threshold.[/dim]")
         return
-
     table = Table(show_header=True, header_style="bold dim", expand=True)
     table.add_column("When", no_wrap=True, width=19)
     table.add_column("Event", no_wrap=True)
