@@ -28,12 +28,28 @@ def platform_avatar_candidates(profile: ProfileEvidence) -> list[str]:
     platform = profile.platform.lower().strip()
     if not user:
         return []
-    if platform in {"github", "gist", "github sponsors"}:
-        return [f"https://github.com/{user}.png?size=460"]
-    if platform == "gitlab":
-        return [f"https://gitlab.com/uploads/-/system/user/avatar/{user}/avatar.png"]
-    if platform == "codeberg":
-        return [f"https://codeberg.org/avatars/{user}"]
+    known: dict[str, str] = {
+        "github": f"https://github.com/{user}.png?size=460",
+        "gist": f"https://github.com/{user}.png?size=460",
+        "github sponsors": f"https://github.com/{user}.png?size=460",
+        "gitlab": f"https://gitlab.com/uploads/-/system/user/avatar/{user}/avatar.png",
+        "codeberg": f"https://codeberg.org/avatars/{user}",
+        "keybase": f"https://keybase.io/{user}/picture",
+        "gravatar": f"https://www.gravatar.com/avatar/{user}?d=404&s=256",
+        "about.me": f"https://about.me/{user}/photo",
+    }
+    if platform in known:
+        return [known[platform]]
+    # Best-effort fallback via unavatar.io for common platforms
+    fallback = {
+        "twitter", "x", "instagram", "snapchat", "facebook", "tiktok",
+        "reddit", "youtube", "twitch", "pinterest", "linkedin", "medium",
+        "dev.to", "hackernews", "producthunt", "behance", "dribbble",
+        "flickr", "vimeo", "spotify", "telegram", "whatsapp",
+        "mastodon", "threads", "bluesky",
+    }
+    if platform in fallback:
+        return [f"https://unavatar.io/{platform}/{user}?fallback=false"]
     return []
 
 

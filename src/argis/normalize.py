@@ -33,9 +33,44 @@ def _raw_avatar(raw_result: dict, platform_name: str, username: str) -> str | No
         if isinstance(value, str) and value.startswith(("http://", "https://", "//")):
             return "https:" + value if value.startswith("//") else value
 
-    # GitHub exposes a stable public avatar redirect for every real account.
-    if platform_name.lower() in {"github", "gist", "github sponsors"}:
-        return f"https://github.com/{username}.png?size=460"
+    return _known_avatar_url(platform_name, username)
+
+
+def _known_avatar_url(platform: str, username: str) -> str | None:
+    """Return a deterministic avatar URL for platforms with known patterns."""
+    plat = platform.lower().strip()
+    user = username.strip()
+    if not user:
+        return None
+
+    # Platforms with stable public avatar endpoints
+    known: dict[str, str] = {
+        "github": f"https://github.com/{user}.png?size=460",
+        "gist": f"https://github.com/{user}.png?size=460",
+        "github sponsors": f"https://github.com/{user}.png?size=460",
+        "keybase": f"https://keybase.io/{user}/picture",
+        "gravatar": f"https://www.gravatar.com/avatar/{user}?d=404&s=256",
+        "about.me": f"https://about.me/{user}/photo",
+    }
+
+    # Platforms where the profile page has predictable og:image through unavatar
+    # unavatar.io is a free service that resolves profile avatars across platforms
+    fallback_platforms = {
+        "twitter", "x", "instagram", "snapchat", "facebook", "tiktok",
+        "reddit", "youtube", "twitch", "pinterest", "linkedin", "medium",
+        "dev.to", "hackernews", "producthunt", "behance", "dribbble",
+        "flickr", "vimeo", "spotify", "telegram", "whatsapp",
+        "mastodon", "threads", "bluesky",
+    }
+
+    if plat in known:
+        return known[plat]
+
+    # As a best-effort fallback, use unavatar.io which scrapes og:image
+    # from the platform's profile page and returns the avatar.
+    if plat in fallback_platforms:
+        return f"https://unavatar.io/{plat}/{user}?fallback=false"
+
     return None
 
 
