@@ -180,7 +180,13 @@ def register_media_review_command(app: typer.Typer) -> None:
         output: Path = typer.Option(Path("."), "--output", "-o", help="HTML file or output directory."),
         open_browser: bool = typer.Option(False, "--open", help="Open the dashboard after generation."),
     ) -> None:
-        """Build an interactive confidence dashboard for captured profile media."""
+        """Build an interactive confidence dashboard for captured profile media.
+
+        Uses the most recent saved scan for the given username. If the scan
+        predates the media-capture feature, re-run the scan first:
+
+            argis scan <username>
+        """
         try:
             history = load_history(username)
         except HistoryError as exc:
@@ -189,9 +195,21 @@ def register_media_review_command(app: typer.Typer) -> None:
         if not history:
             console.print(f"[yellow]No saved scan found for @{username}.[/yellow]")
             raise typer.Exit(code=1)
-        path, count = write_media_review_dashboard(username, history[-1], output)
+
+        entry = history[-1]
+        results = entry.get("results") or {}
+        found = sum(1 for r in results.values() if r.get("status") == "FOUND")
+        with_media = sum(1 for r in results.values()
+                         if any(k in r for k in ("avatar_url", "avatar", "img", "image", "profile_image")))
+
+        path, count = write_media_review_dashboard(username, entry, output)
         if count:
             console.print(f"[green]Media review dashboard ({count} candidates) -> [underline]{path}[/underline][/green]")
+        elif found and not with_media:
+            console.print(f"[yellow]Latest scan found {found} accounts but none have captured media.[/yellow]")
+            console.print(f"[dim]Re-run [green]argis scan {username}[/green] with the latest version to capture profile images.[/dim]")
+        elif not found:
+            console.print(f"[yellow]Latest scan for @{username} found no accounts.[/yellow]")
         else:
             console.print(f"[yellow]Dashboard created, but the latest scan has no captured media: {path}[/yellow]")
         if open_browser:
