@@ -4,7 +4,6 @@ import json
 
 from typer.testing import CliRunner
 
-from argis.dossier import generate_dossier_html
 from argis.entrypoint import app
 from argis.media_decisions import (
     apply_decisions_to_records,
@@ -24,61 +23,35 @@ def review_payload():
         "reviewed_at": "2026-07-12T06:00:00Z",
         "media": [
             {
-                "platform": "GitHub",
-                "profile_url": "https://github.com/alice",
+                "platform": "GitHub", "profile_url": "https://github.com/alice",
                 "image_url": "https://github.com/alice.png?size=460",
-                "avatar_hash": "approved-hash",
-                "confidence": 96,
-                "source": "validated API endpoint",
-                "state": "accepted",
+                "avatar_hash": "approved-hash", "confidence": 96,
+                "source": "validated API endpoint", "state": "accepted",
                 "signals": ["Username-specific endpoint"],
             },
             {
                 "platform": "Podcast Index",
                 "profile_url": "https://podcastindex.org/podcaster/alice",
                 "image_url": "https://podcastindex.org/android-chrome-256x256.png",
-                "avatar_hash": "favicon-hash",
-                "confidence": 4,
-                "source": "og:image",
-                "state": "rejected",
+                "avatar_hash": "favicon-hash", "confidence": 4,
+                "source": "og:image", "state": "rejected",
                 "signals": ["Filename looks like a site asset"],
             },
             {
-                "platform": "DeBank",
-                "profile_url": "https://debank.com/profile/alice",
+                "platform": "DeBank", "profile_url": "https://debank.com/profile/alice",
                 "image_url": "https://static-assets.debank.com/user.png",
-                "confidence": 62,
-                "state": "review",
+                "confidence": 62, "state": "review",
             },
         ],
     }
 
 
 def records():
+    common = {"name": "", "mail": "", "bio": "", "links": [], "status": "FOUND"}
     return [
-        {
-            "p": "GitHub", "url": "https://github.com/alice",
-            "img": "", "avatar_hash": "", "warnings": [],
-            "cat": "development", "name": "", "mail": "", "bio": "",
-            "links": [], "status": "FOUND", "confidence": 95,
-            "verification": "VERIFIED",
-        },
-        {
-            "p": "Podcast Index", "url": "https://podcastindex.org/podcaster/alice",
-            "img": "https://podcastindex.org/android-chrome-256x256.png",
-            "avatar_hash": "favicon-hash", "warnings": [],
-            "cat": "entertainment", "name": "", "mail": "", "bio": "",
-            "links": [], "status": "FOUND", "confidence": 70,
-            "verification": "PROBABLE",
-        },
-        {
-            "p": "DeBank", "url": "https://debank.com/profile/alice",
-            "img": "https://static-assets.debank.com/user.png",
-            "avatar_hash": "pending-hash", "warnings": [],
-            "cat": "crypto", "name": "", "mail": "", "bio": "",
-            "links": [], "status": "FOUND", "confidence": 70,
-            "verification": "PROBABLE",
-        },
+        {**common, "p": "GitHub", "url": "https://github.com/alice", "img": "", "avatar_hash": "", "warnings": [], "cat": "development", "confidence": 95, "verification": "VERIFIED"},
+        {**common, "p": "Podcast Index", "url": "https://podcastindex.org/podcaster/alice", "img": "https://podcastindex.org/android-chrome-256x256.png", "avatar_hash": "favicon-hash", "warnings": [], "cat": "entertainment", "confidence": 70, "verification": "PROBABLE"},
+        {**common, "p": "DeBank", "url": "https://debank.com/profile/alice", "img": "https://static-assets.debank.com/user.png", "avatar_hash": "pending-hash", "warnings": [], "cat": "crypto", "confidence": 70, "verification": "PROBABLE"},
     ]
 
 
@@ -91,8 +64,7 @@ def test_import_and_load_review(monkeypatch, tmp_path):
     monkeypatch.setenv("ARGIS_MEDIA_REVIEW_DIR", str(tmp_path / "reviews"))
     source = tmp_path / "export.json"
     source.write_text(json.dumps(review_payload()), "utf-8")
-    destination, value = import_review_file(source)
-    assert destination.exists()
+    destination, _ = import_review_file(source)
     assert destination == decisions_file("alice")
     assert load_decisions("alice")["media"][0]["state"] == "accepted"
 
@@ -100,8 +72,7 @@ def test_import_and_load_review(monkeypatch, tmp_path):
 def test_apply_accepts_rejects_and_hides_pending(monkeypatch, tmp_path):
     monkeypatch.setenv("ARGIS_MEDIA_REVIEW_DIR", str(tmp_path))
     decisions_file("alice").write_text(json.dumps(review_payload()), "utf-8")
-    reviewed = apply_decisions_to_records(records(), "alice")
-    github, podcast, debank = reviewed
+    github, podcast, debank = apply_decisions_to_records(records(), "alice")
     assert github["img"].endswith("alice.png?size=460")
     assert github["avatar_hash"] == "approved-hash"
     assert "media approved by analyst" in github["warnings"]
@@ -119,9 +90,10 @@ def test_no_review_keeps_automatic_media(monkeypatch, tmp_path):
 
 
 def test_dossier_runtime_includes_only_approved_media(monkeypatch, tmp_path):
+    import argis.dossier as dossier
     monkeypatch.setenv("ARGIS_MEDIA_REVIEW_DIR", str(tmp_path))
     decisions_file("alice").write_text(json.dumps(review_payload()), "utf-8")
-    html = generate_dossier_html(records(), "alice")
+    html = dossier.generate_dossier_html(records(), "alice")
     assert "github.com/alice.png?size=460" in html
     assert "android-chrome-256x256.png" not in html
     assert "static-assets.debank.com/user.png" not in html
