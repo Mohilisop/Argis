@@ -12,9 +12,9 @@ license = { text = "MIT" }
 authors = [{ name = "mohilisop" }]
 keywords = ["osint", "username", "cli", "security", "async"]
 dependencies = [
-    "typer>=0.12.0",
-    "httpx[http2]>=0.27.0",
-    "rich>=13.7.0",
+ "typer>=0.12.0",
+ "httpx[http2]>=0.27.0",
+ "rich>=13.7.0",
 ]
 
 [project.urls]
@@ -24,50 +24,50 @@ Issues = "https://github.com/Mohilisop/argis/issues"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
+ "pytest>=8.0.0",
+ "pytest-asyncio>=0.23.0",
 ]
 intel = [
-    "pillow>=10.0",
+ "pillow>=10.0",
 ]
 render = [
-    "playwright>=1.44",
+ "playwright>=1.44",
 ]
 pdf = [
-    "weasyprint>=61",
+ "weasyprint>=61",
 ]
 mcp = [
-    "mcp>=1.0",
-    "uvicorn>=0.29",
-    "starlette>=0.37",
+ "mcp>=1.0",
+ "uvicorn>=0.29",
+ "starlette>=0.37",
 ]
 web = [
-    "fastapi>=0.110",
-    "uvicorn>=0.29",
+ "fastapi>=0.110",
+ "uvicorn>=0.29",
 ]
 all = [
-    "pillow>=10.0",
-    "playwright>=1.44",
-    "weasyprint>=61",
-    "fastapi>=0.110",
-    "uvicorn>=0.29",
+ "pillow>=10.0",
+ "playwright>=1.44",
+ "weasyprint>=61",
+ "fastapi>=0.110",
+ "uvicorn>=0.29",
 ]
 screenshots = [
-    "playwright>=1.40.0",
-    "pytesseract>=0.3.10",
-    "Pillow>=10.0.0",
+ "playwright>=1.40.0",
+ "pytesseract>=0.3.10",
+ "Pillow>=10.0.0",
 ]
 vision = [
-    "opencv-python-headless>=4.8.0,<5.0",
-    "beautifulsoup4>=4.12.0",
-    "lxml>=5.0.0",
+ "opencv-python-headless>=4.8.0,<5.0",
+ "beautifulsoup4>=4.12.0",
+ "lxml>=5.0.0",
 ]
 insightface = [
-    "insightface>=1.0.0",
+ "insightface>=1.0.0",
 ]
 
 [project.scripts]
-argis = "argis.cli:app"
+argis = "argis.entrypoint:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/argis"]
