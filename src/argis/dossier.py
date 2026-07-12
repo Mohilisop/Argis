@@ -5,6 +5,7 @@ Only renders data — normalization, verification, and enrichment happen upstrea
 """
 from __future__ import annotations
 
+import asyncio
 import html
 import json
 import re
@@ -994,19 +995,47 @@ async def build_dossier(
     use_tor: bool = False,
     render: bool = False,
 ) -> dict:
-    """Normalize scan results and generate dossier HTML.
+    """Normalize scan results, enrich with avatars, verify, and generate dossier HTML.
 
-    This is the main entry point used by the CLI. It normalizes raw
-    scanner output and passes properly-shaped data to the report generator.
+    This is the main entry point used by the CLI. Enrichment fetches profile
+    pages to extract avatar images (og:image / twitter:image / JSON-LD).
     """
     from argis.verify import determine_verification
+    from argis.intel_http import AsyncFetcher
 
     site_categories = site_categories or {}
 
     # Normalize all results into ProfileEvidence objects
     profiles = normalize_scan_results(results, site_categories, username)
+    found_profiles = [p for p in profiles if p.status == "FOUND"]
 
-    # Run verification on each profile
+    # ── Media enrichment: fetch pages + extract avatars ──────────
+    if enrich and found_profiles:
+        async with AsyncFetcher(
+            timeout=timeout, concurrency=concurrency,
+            proxy=proxy, use_tor=use_tor, render=render,
+        ) as fetcher:
+            from argis.media import enrich_avatar, extract_avatar_candidates
+
+            sem = asyncio.Semaphore(concurrency)
+
+            async def enrich_one(pe: ProfileEvidence) -> ProfileEvidence:
+                async with sem:
+                    resp = await fetcher.get(pe.url)
+                    if resp.error or not resp.text:
+                        return pe
+                    return await enrich_avatar(pe, html=resp.text, fetcher=fetcher)
+
+            enriched = await asyncio.gather(
+                *(enrich_one(p) for p in found_profiles)
+            )
+            # Replace profiles with enriched versions
+            enriched_by_platform = {p.platform: p for p in enriched}
+            profiles = [
+                enriched_by_platform.get(p.platform, p) for p in profiles
+            ]
+
+    # ── Verification ─────────────────────────────────────────────
     verified_profiles = []
     for pe in profiles:
         state, warnings = determine_verification(
@@ -1021,10 +1050,8 @@ async def build_dossier(
         pe.warnings.extend(warnings)
         verified_profiles.append(pe)
 
-    # Convert to dossier dicts
+    # Convert to dossier dicts and generate HTML
     dossier_dicts = profiles_to_dossier_dicts(verified_profiles)
-
-    # Generate HTML
     html_str = generate_dossier_html(dossier_dicts, username)
 
     found: dict[str, dict] = {}
@@ -1039,6 +1066,7 @@ async def build_dossier(
                 "bio": pe.bio or "",
                 "mail": "; ".join(pe.emails),
                 "img": pe.avatar_url or "",
+                "avatar_hash": pe.avatar_hash or "",
                 "verification": pe.verification,
                 "warnings": pe.warnings,
             }

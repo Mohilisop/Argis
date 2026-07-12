@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from argis.models import ProfileEvidence
+from argis.models import EvidenceItem, ProfileEvidence
 
 try:
     from PIL import Image
@@ -143,7 +143,7 @@ async def enrich_avatar(
             if h is not None:
                 profile.avatar_hash = hex(h)
             profile.evidence.append(
-                __import__("argis.models", fromlist=["EvidenceItem"]).EvidenceItem(
+                EvidenceItem(
                     field="avatar", value=url,
                     source="enrich.og_image", confidence=70,
                 )
