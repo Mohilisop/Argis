@@ -7,14 +7,31 @@ from typing import Any
 from argis.media_decisions import apply_decisions_to_records
 
 _INSTALLED = False
-_BROKEN = '''onerror="this.outerHTML='<div class=pfp-ph>' + d.p[0].toUpperCase() + '</div>'">'''
-_SAFE = '''onerror="this.style.display='none'">'''
+
+# Both fragments are valid HTML intentions but invalid JavaScript: the inner
+# single quotes terminate the surrounding single-quoted JS string literal, which
+# is a parse-time error that disables the ENTIRE dossier <script>. When that
+# happens, the avatar wall, media evidence grid, and account groups all render
+# empty. HTML-encoding the inner quotes keeps the DOM behavior identical while
+# making the JS string valid.
+_REPLACEMENTS = (
+    (
+        '''onerror="this.outerHTML='<div class=pfp-ph>' + d.p[0].toUpperCase() + '</div>'">''',
+        '''onerror="this.style.display=&#39;none&#39;">''',
+    ),
+    (
+        '''onerror="this.style.display='none'">''',
+        '''onerror="this.style.display=&#39;none&#39;">''',
+    ),
+)
 
 
 def repair_dossier_html(value: str) -> str:
     if not isinstance(value, str):
         return value
-    return value.replace(_BROKEN, _SAFE)
+    for broken, safe in _REPLACEMENTS:
+        value = value.replace(broken, safe)
+    return value
 
 
 def _apply_review(args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any]]:
@@ -49,8 +66,6 @@ def install_dossier_repair() -> None:
         generate_wrapper._argis_repaired = True
         dossier.generate_dossier_html = generate_wrapper
 
-    # Some versions expose to_html_report as a separate renderer. Apply review
-    # data when it has the same records/username signature; otherwise only repair.
     original_report = getattr(dossier, "to_html_report", None)
     if original_report is not None and not getattr(original_report, "_argis_repaired", False):
         @wraps(original_report)
