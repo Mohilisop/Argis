@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from argis.models import EvidenceItem, ProfileEvidence
+from argis.media_classifier import ClassifierContext, classify_media
+from argis.models import EvidenceItem, MediaEvidence, ProfileEvidence
 
 CORPORATE_EMAIL_DOMAINS = {
     "waze.com", "google.com", "facebook.com", "meta.com", "apple.com",
@@ -19,6 +20,10 @@ CORPORATE_EMAIL_DOMAINS = {
     "mailchimp.com", "sendgrid.net", "twilio.com", "intuit.com",
     "noreply.github.com",
 }
+
+# Platforms whose avatar_url comes from a first-party profile/user API. Media
+# from these sources is treated as an API-declared avatar by the classifier.
+_API_AVATAR_PLATFORMS = {"github", "gist", "github sponsors", "instagram"}
 
 
 def _raw_avatar(raw_result: dict, platform_name: str, username: str) -> str | None:
@@ -43,7 +48,6 @@ def _known_avatar_url(platform: str, username: str) -> str | None:
     if not user:
         return None
 
-    # Platforms with stable public avatar endpoints
     known: dict[str, str] = {
         "github": f"https://github.com/{user}.png?size=460",
         "gist": f"https://github.com/{user}.png?size=460",
@@ -53,8 +57,6 @@ def _known_avatar_url(platform: str, username: str) -> str | None:
         "about.me": f"https://about.me/{user}/photo",
     }
 
-    # Platforms where the profile page has predictable og:image through unavatar
-    # unavatar.io is a free service that resolves profile avatars across platforms
     fallback_platforms = {
         "twitter", "x", "instagram", "snapchat", "facebook", "tiktok",
         "reddit", "youtube", "twitch", "pinterest", "linkedin", "medium",
@@ -65,13 +67,18 @@ def _known_avatar_url(platform: str, username: str) -> str | None:
 
     if plat in known:
         return known[plat]
-
-    # As a best-effort fallback, use unavatar.io which scrapes og:image
-    # from the platform's profile page and returns the avatar.
     if plat in fallback_platforms:
         return f"https://unavatar.io/{plat}/{user}?fallback=false"
-
     return None
+
+
+def _avatar_source(raw_result: dict, platform_name: str) -> str:
+    """Describe where the avatar came from, for classifier provenance."""
+    if any(raw_result.get(k) for k in ("avatar_url", "avatar", "profile_image", "profile_image_url", "image", "img", "picture", "photo_url")):
+        if platform_name.lower() in _API_AVATAR_PLATFORMS:
+            return "api.profile_avatar"
+        return "scan.avatar_field"
+    return "platform.public_avatar_endpoint"
 
 
 def normalize_scan_result(
@@ -102,10 +109,10 @@ def normalize_scan_result(
         ))
 
     avatar_url = _raw_avatar(raw_result, platform_name, username)
+    avatar_source = _avatar_source(raw_result, platform_name)
     if avatar_url:
         evidence_list.append(EvidenceItem(
-            field="avatar", value=avatar_url,
-            source="scan.avatar_field" if any(raw_result.get(k) for k in ("avatar_url", "avatar", "profile_image", "image", "img", "picture")) else "platform.public_avatar_endpoint",
+            field="avatar", value=avatar_url, source=avatar_source,
             confidence=90 if platform_name.lower() == "github" else max(60, confidence),
         ))
 
@@ -149,7 +156,51 @@ def normalize_scan_results(
     return profiles
 
 
+def _avatar_evidence_source(pe: ProfileEvidence) -> str:
+    for item in pe.evidence:
+        if item.field == "avatar":
+            return item.source
+    return "platform.public_avatar_endpoint"
+
+
+def _classified_media(pe: ProfileEvidence) -> list[MediaEvidence]:
+    """Build classified MediaEvidence for a profile.
+
+    Prefers any media the enrichment pipeline already attached. Otherwise
+    classifies the profile's avatar_url on URL + verification signals so the
+    dossier shows a correctly-labelled PFP instead of a blind 90% guess.
+    """
+    if pe.media:
+        return pe.media
+    if not pe.avatar_url:
+        return []
+
+    source = _avatar_evidence_source(pe)
+    api_declared = source.startswith("api.")
+    ctx = ClassifierContext(
+        platform=pe.platform,
+        profile_url=pe.url,
+        image_url=pe.avatar_url,
+        source=source,
+        username=pe.username,
+        verification=pe.verification,
+        api_declared_avatar=api_declared,
+        username_in_page=bool(pe.username and pe.title and pe.username.lower() in pe.title.lower()),
+    )
+    classification, confidence, warnings = classify_media(ctx)
+    return [MediaEvidence(
+        url=pe.avatar_url,
+        classification=classification,
+        confidence=confidence,
+        source=source,
+        perceptual_hash=pe.avatar_hash or None,
+        validated=(classification == "PROFILE_AVATAR" and confidence >= 80),
+        warnings=warnings,
+    )]
+
+
 def profile_evidence_to_dict(pe: ProfileEvidence) -> dict:
+    media = _classified_media(pe)
     return {
         "p": pe.platform,
         "cat": pe.category,
@@ -176,7 +227,7 @@ def profile_evidence_to_dict(pe: ProfileEvidence) -> dict:
                 "content_type": m.content_type,
                 "perceptual_hash": m.perceptual_hash,
             }
-            for m in pe.media
+            for m in media
         ],
     }
 
