@@ -13,49 +13,25 @@ from argis.cli import app
 from argis.diff import load_history
 from argis.echo import analyze_echo
 from argis.exceptions import HistoryError
+from argis.media_runtime import install_media_capture
 from argis.utils.display import console
+
+# Preserve validated avatar URLs/hashes in normal scan results before dossier
+# normalization runs. Installation is idempotent.
+install_media_capture()
 
 
 @app.command("echo", rich_help_panel="History & Tracking")
 def echo_command(
-    username: str = typer.Argument(
-        ...,
-        help="Username whose saved scan history should be analyzed.",
-    ),
-    window: int = typer.Option(
-        72,
-        "--window",
-        "-w",
-        min=1,
-        help="Hours in which changes count as coordinated.",
-    ),
-    min_confidence: int = typer.Option(
-        45,
-        "--min-confidence",
-        "-mc",
-        min=0,
-        max=100,
-        help="Hide Echo events below this confidence.",
-    ),
-    json_output: bool = typer.Option(
-        False,
-        "--json",
-        help="Print the complete Echo report as JSON.",
-    ),
-    output: Optional[Path] = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Write the complete Echo report to a JSON file.",
-    ),
+    username: str = typer.Argument(..., help="Username whose saved scan history should be analyzed."),
+    window: int = typer.Option(72, "--window", "-w", min=1, help="Hours in which changes count as coordinated."),
+    min_confidence: int = typer.Option(45, "--min-confidence", "-mc", min=0, max=100, help="Hide Echo events below this confidence."),
+    json_output: bool = typer.Option(False, "--json", help="Print the complete Echo report as JSON."),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Write the complete Echo report to a JSON file."),
 ) -> None:
     """Detect coordinated identity drift across saved scans.
 
-    Echo goes beyond a two-scan diff. It finds rebrands, avatar migrations,
-    contact pivots, and coordinated account appearances or disappearances.
-
     Examples:
-
         argis echo johndoe
         argis echo johndoe --window 24 --min-confidence 70
         argis echo johndoe --json
@@ -74,13 +50,7 @@ def echo_command(
         )
         raise typer.Exit(code=1)
 
-    report = analyze_echo(
-        history,
-        username,
-        coordination_window_hours=window,
-        minimum_confidence=min_confidence,
-    )
-
+    report = analyze_echo(history, username, coordination_window_hours=window, minimum_confidence=min_confidence)
     payload = json.dumps(report, indent=2, ensure_ascii=False)
 
     if output is not None:
@@ -94,37 +64,30 @@ def echo_command(
     if json_output:
         console.print_json(payload)
         return
-
     _print_echo_report(report, username, window)
 
 
 def _print_echo_report(report: dict, username: str, window: int) -> None:
     score = int(report.get("stability_score", 100))
     if score >= 80:
-        stability_style = "green"
-        stability_label = "STABLE"
+        stability_style, stability_label = "green", "STABLE"
     elif score >= 55:
-        stability_style = "yellow"
-        stability_label = "DRIFTING"
+        stability_style, stability_label = "yellow", "DRIFTING"
     else:
-        stability_style = "red"
-        stability_label = "VOLATILE"
+        stability_style, stability_label = "red", "VOLATILE"
 
     events = report.get("events", [])
     summary = (
         f"[bold]@{username}[/bold]\n"
         f"[dim]{report.get('snapshots_analyzed', 0)} snapshots, "
         f"{len(report.get('platforms_seen', []))} platforms, {window}h coordination window[/dim]\n\n"
-        f"Identity stability: [{stability_style}][bold]{score}/100 "
-        f"({stability_label})[/bold][/{stability_style}]\n"
-        f"Identity epochs: [cyan]{report.get('identity_epochs', 0)}[/cyan]  "
-        f"Echo events: [cyan]{len(events)}[/cyan]"
+        f"Identity stability: [{stability_style}][bold]{score}/100 ({stability_label})[/bold][/{stability_style}]\n"
+        f"Identity epochs: [cyan]{report.get('identity_epochs', 0)}[/cyan]  Echo events: [cyan]{len(events)}[/cyan]"
     )
     console.print(Panel(summary, title="[bold green]ARGIS ECHO[/bold green]", border_style="green"))
 
     for warning in report.get("warnings", []):
         console.print(f"[yellow]! {warning}[/yellow]")
-
     if not events:
         console.print("[dim]No coordinated identity drift crossed the confidence threshold.[/dim]")
         return
@@ -135,21 +98,15 @@ def _print_echo_report(report: dict, username: str, window: int) -> None:
     table.add_column("Conf.", justify="right", no_wrap=True)
     table.add_column("Platforms")
     table.add_column("Evidence")
-
     for event in events:
         confidence = int(event.get("confidence", 0))
-        confidence_style = "red" if confidence >= 85 else "yellow" if confidence >= 65 else "cyan"
-        observed = str(event.get("observed_at", ""))[:19].replace("T", " ")
-        event_name = str(event.get("event_type", "account_change")).replace("_", " ")
-        platforms = ", ".join(event.get("platforms", []))
-        fields = ", ".join(str(value).replace("_", " ") for value in event.get("fields", []))
+        style = "red" if confidence >= 85 else "yellow" if confidence >= 65 else "cyan"
         table.add_row(
-            observed,
-            event_name,
-            f"[{confidence_style}]{confidence}%[/{confidence_style}]",
-            platforms,
-            fields,
+            str(event.get("observed_at", ""))[:19].replace("T", " "),
+            str(event.get("event_type", "account_change")).replace("_", " "),
+            f"[{style}]{confidence}%[/{style}]",
+            ", ".join(event.get("platforms", [])),
+            ", ".join(str(value).replace("_", " ") for value in event.get("fields", [])),
         )
-
     console.print(table)
     console.print("[dim]Use --json or -o FILE for full before/after evidence.[/dim]")
