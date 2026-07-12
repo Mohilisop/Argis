@@ -1,48 +1,37 @@
 # Argis
 
-<p align="center">
-  <img src="assets/logo.png" alt="Argis logo" width="320"/>
-</p>
+The all-seeing OSINT scanner  
+Username reconnaissance · identity correlation · impersonation detection · port scanning · service detection · OS fingerprinting · geolocation · change tracking
 
-<p align="center">
-  <b>The all-seeing OSINT scanner</b><br>
-  Username reconnaissance · identity correlation · impersonation detection · port scanning · service detection · OS fingerprinting · geolocation · change tracking
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+"/>
-  <img src="https://img.shields.io/github/actions/workflow/status/Mohilisop/argis/.github/workflows/ci.yml?branch=main" alt="CI"/>
-  <img src="https://img.shields.io/github/license/Mohilisop/argis" alt="License"/>
-</p>
-
-Named after **Argus Panoptes**, the hundred-eyed giant of Greek myth — every platform, every port, watched at once.
+Named after **Argus Panoptes**, the hundred-eyed giant of Greek myth: every platform, every port, watched at once.
 
 ---
 
 ## Features
 
-- :mag: **509 platforms** — social, coding, gaming, creative, professional, and more
-- :zap: **Async engine** — concurrent scanning with HTTP/2 support
-- :computer: **Nmap-style recon** — port scan, service version detection, OS detection, UDP scan, traceroute
-- :globe_with_meridians: **DNS & WHOIS** — resolve records, lookup domain ownership
-- :earth_americas: **Geolocation** — IP geolocation via ipgeolocation.io
-- :clock: **History & diff** — track changes to a username's footprint over time
-- :satellite: **Change monitoring** — continuously watch usernames and report changes
-- :left_right_arrow: **Side-by-side comparison** — compare two usernames
-- :movie_camera: **Wayback Machine** — historical snapshots of profiles
-- :file_folder: **Multiple outputs** — JSON, CSV, HTML, Markdown, TXT, NDJSON, XMind, GraphML, Neo4j, PDF, webhooks
-- :brain: **AI analysis** — LLM-powered risk assessment via OpenAI or Anthropic
-- :gear: **Configurable** — config file, env vars, CLI flags
-- :robot: **OCR** — extract usernames from screenshots
-- :camera: **Face detection** — detect faces and reverse-search via browser
-- :broom: **Self-healing** — auto-verify site rules and flag silent rot
-- :link: **Identity correlation** — cluster accounts into real identities vs impersonators
-- :shield: **Impersonation guard** — hunt lookalike handles wearing your face
-- :lock: **Breach checker** — check if emails were compromised in known breaches
-- :speech_balloon: **Web mentions** — Google dork search for username/email mentions
-- :earth_asia: **Geo inference** — infer geographic region from profile signals
-- :bust_in_silhouette: **Unified threat report** — `argis me` consolidates your entire footprint
-- :electric_plug: **MCP server** — connect Argis to any MCP-compatible AI assistant
+- :mag: **509 platforms**: social, coding, gaming, creative, professional, and more
+- :zap: **Async engine**: concurrent scanning with HTTP/2 support
+- :computer: **Nmap-style recon**: port scan, service version detection, OS detection, UDP scan, traceroute
+- :globe_with_meridians: **DNS & WHOIS**: resolve records, lookup domain ownership
+- :earth_americas: **Geolocation**: IP geolocation via ipgeolocation.io
+- :clock: **History & diff**: track changes to a username's footprint over time
+- :repeat: **Echo identity drift**: detect coordinated rebrands, avatar migrations, contact pivots, and account expansion or retreat across saved scans
+- :satellite: **Change monitoring**: continuously watch usernames and report changes
+- :left_right_arrow: **Side-by-side comparison**: compare two usernames
+- :movie_camera: **Wayback Machine**: historical snapshots of profiles
+- :file_folder: **Multiple outputs**: JSON, CSV, HTML, Markdown, TXT, NDJSON, XMind, GraphML, Neo4j, PDF, webhooks
+- :brain: **AI analysis**: LLM-powered risk assessment via OpenAI or Anthropic
+- :gear: **Configurable**: config file, env vars, CLI flags
+- :robot: **OCR**: extract usernames from screenshots
+- :camera: **Face detection**: detect faces and reverse-search via browser
+- :broom: **Self-healing**: auto-verify site rules and flag silent rot
+- :link: **Identity correlation**: cluster accounts into real identities vs impersonators
+- :shield: **Impersonation guard**: hunt lookalike handles wearing your face
+- :lock: **Breach checker**: check if emails were compromised in known breaches
+- :speech_balloon: **Web mentions**: Google dork search for username/email mentions
+- :earth_asia: **Geo inference**: infer geographic region from profile signals
+- :bust_in_silhouette: **Unified threat report**: `argis me` consolidates your entire footprint
+- :electric_plug: **MCP server**: connect Argis to any MCP-compatible AI assistant
 
 ---
 
@@ -68,12 +57,13 @@ Every username scanner ever shipped answers one question: _does this handle exis
 | Command | What it answers | Unique to Argis? |
 |---------|----------------|------------------|
 | `doctor` | Are my detection rules still correct, or have they silently rotted? | ✅ First to auto-verify |
-| `link` | Of everywhere this handle exists, which accounts are the SAME person — and which are impostors? | ✅ First identity resolution |
+| `link` | Of everywhere this handle exists, which accounts are the SAME person, and which are impostors? | ✅ First identity resolution |
 | `guard` | Is anyone impersonating me on a lookalike handle right now? | ✅ First impersonation early-warning |
+| `echo` | Did this identity rebrand, migrate avatars, pivot contact details, or retreat across platforms together? | ✅ Coordinated identity drift |
 
-All three are **defensive / self-OSINT**: they verify your data, disambiguate accounts that already share a public handle, and surface people impersonating **you**. No deanonymization, no anti-bot bypassing.
+All four are **defensive / self-OSINT**: they verify your data, disambiguate accounts that already share a public handle, track changes in saved public observations, and surface people impersonating **you**. No deanonymization, no anti-bot bypassing.
 
-### doctor — self-healing site database
+### doctor: self-healing site database
 
 `sites.json` rots silently: a platform tweaks its markup or 404 behaviour, a rule breaks, and nobody notices for months. `doctor` re-runs every rule against a **known-real** and a **known-fake** username and flags what's broken.
 
@@ -85,7 +75,7 @@ argis doctor --report health.md --json health.json --exit-code
 
 Ships with a weekly GitHub Action. Also flags **duplicate rule names** in `sites.json` (JSON silently keeps only the last, so earlier ones are dead rules).
 
-### link — identity correlation
+### link: identity correlation
 
 Runs a scan, pulls each found profile's avatar, display name, bio, outbound links, and emails, then clusters the accounts into **identity groups**. The biggest cluster is you; anything sharing the handle but scoring below threshold is flagged as a **namesake or impersonator**.
 
@@ -97,9 +87,9 @@ argis link johndoe --no-avatar
 
 Scoring blends avatar perceptual-hash (dHash), name/bio Jaccard similarity, shared links, and shared emails.
 
-### guard — impersonation early-warning
+### guard: impersonation early-warning
 
-Nobody impersonates you with your _exact_ handle — they register `john_doe`, `j0hndoe`, `johndoe_official`, or the homoglyph `jоhndoe` (Cyrillic o). `guard` generates the confusable space around your handle, scans every variant across all platforms, and scores each registered hit against **your** real profile.
+Nobody impersonates you with your _exact_ handle: they register `john_doe`, `j0hndoe`, `johndoe_official`, or the homoglyph `jоhndoe` (Cyrillic o). `guard` generates the confusable space around your handle, scans every variant across all platforms, and scores each registered hit against **your** real profile.
 
 ```bash
 argis guard johndoe --list                     # preview the variant space
@@ -108,6 +98,35 @@ argis guard johndoe --threshold 0.65 --category social
 ```
 
 Variant generation covers separators, affixes, digit-leet, Unicode homoglyphs, and fat-finger typos.
+
+### echo: coordinated identity drift
+
+A normal diff compares two scans and reports accounts that appeared or disappeared. `echo` analyzes the full saved history and groups changes that happened in the same observation window. It can surface coordinated rebrands, avatar migrations, contact pivots, and multi-platform account expansion or retreat.
+
+Run at least two saved scans first:
+
+```bash
+argis scan johndoe                              # baseline
+# scan again later
+argis scan johndoe
+argis echo johndoe                              # analyze all saved history
+```
+
+Tune the coordination window and confidence threshold:
+
+```bash
+argis echo johndoe --window 24 --min-confidence 70
+argis echo johndoe -w 168 -mc 55               # one-week coordination window
+```
+
+Export complete before/after evidence as JSON:
+
+```bash
+argis echo johndoe --json
+argis echo johndoe --output johndoe-echo.json
+```
+
+Echo reports an identity stability score, identity epochs, event confidence, affected platforms, changed fields, and full before/after evidence in JSON output.
 
 ---
 
@@ -121,6 +140,7 @@ Variant generation covers separators, affixes, digit-leet, Unicode homoglyphs, a
 | `doctor` | Health-check every site rule and flag rot |
 | `link` | Cluster accounts into real identities vs impostors |
 | `guard` | Hunt lookalike handles impersonating you |
+| `echo` | Analyze saved scans for coordinated identity drift |
 | `breach` | Check emails for known breaches (HIBP-style) |
 | `mentions` | Web-mention search via Google dorks |
 | `geo` | Infer geographic region from profile signals |
@@ -147,11 +167,20 @@ argis scan johndoe
 argis scan johndoe --category coding,social
 argis scan johndoe --site GitHub                # just one platform
 argis scan --file usernames.txt --export csv
-argis scan johndoe -T report.txt -X mindmap.xmind  # individual format exports
-argis scan johndoe -G graph.graphml --neo4j import.cypher  # graph exports
-argis scan johndoe -P report.pdf               # PDF report
-argis scan johndoe --ai                         # AI-powered risk analysis
-argis scan johndoe --min-confidence 60          # only high-confidence hits
+argis scan johndoe -T report.txt -X mindmap.xmind
+argis scan johndoe -G graph.graphml --neo4j import.cypher
+argis scan johndoe -P report.pdf
+argis scan johndoe --ai
+argis scan johndoe --min-confidence 60
+```
+
+### echo
+
+```bash
+argis echo johndoe
+argis echo johndoe --window 24 --min-confidence 70
+argis echo johndoe --json
+argis echo johndoe -o johndoe-echo.json
 ```
 
 ### scan-image
@@ -202,10 +231,10 @@ argis wayback johndoe --limit 5
 ```bash
 pip install argis                     # base install
 pip install "argis[intel]"            # + avatar matching for link/guard
-pip install "argis[screenshots]"     # + OCR and screenshots
-pip install "argis[vision]"          # + face detection
-pip install "argis[insightface]"     # + offline face matching
-pip install "argis[dev]"            # + test suite
+pip install "argis[screenshots]"      # + OCR and screenshots
+pip install "argis[vision]"           # + face detection
+pip install "argis[insightface]"      # + offline face matching
+pip install "argis[dev]"              # + test suite
 ```
 
 Requires **Python 3.10+**. Supports Windows, Linux, and macOS.
