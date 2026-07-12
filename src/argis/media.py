@@ -46,7 +46,8 @@ def _dhash(data: bytes, size: int = 8) -> int | None:
         )
     except Exception:
         return None
-    pixels = list(img.getdata())
+    get_pixels = getattr(img, "get_flattened_data", None) or getattr(img, "getdata")
+    pixels = list(get_pixels())
     bits = 0
     for row in range(size):
         base = row * (size + 1)
