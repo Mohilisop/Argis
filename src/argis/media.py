@@ -1,243 +1,237 @@
 from __future__ import annotations
 
-import io
-import json
-import re
-from html import unescape
-from urllib.parse import urljoin
+import asyncio
+from datetime import datetime
+from typing import Any, Optional
 
-from argis.models import EvidenceItem, ProfileEvidence
+from argis import cache as argis_cache
+from argis.decisions import MediaDecisions
+from argis.defaults import PLATFORM_DEFAULTS
+from argis.media_adapters import registered_adapters, adapter_for_platform
+from argis.media_adapters.base import AdapterResult
+from argis.models import MediaEvidence, ProfileEvidence
+from argis.resolve_url import detect_platform, extract_username, profile_url_for
 
-try:
-    from PIL import Image
-    _HAS_PIL = True
-except Exception:
-    _HAS_PIL = False
 
-_LOGO_PATTERNS = re.compile(
-    r"(?i)(?:^|[/_.-])(logo|sprite|banner|cover|brand|placeholder|avatar[_-]?default|default[_-]?avatar|1x1|pixel)(?:[/_.?&=-]|$)"
+import re as _re
+
+_OG_IMAGE = _re.compile(
+    r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', _re.I
 )
-_MIN_AVATAR_SIZE = 48
-_MAX_AVATAR_SIZE = 8 * 1024 * 1024
-_MIN_ASPECT = 0.55
-_MAX_ASPECT = 1.8
-
-# Known reliable public avatar endpoints. These are attempted before page metadata.
-def platform_avatar_candidates(profile: ProfileEvidence) -> list[str]:
-    user = profile.username.strip()
-    platform = profile.platform.lower().strip()
-    if not user:
-        return []
-    known: dict[str, str] = {
-        "github": f"https://github.com/{user}.png?size=460",
-        "gist": f"https://github.com/{user}.png?size=460",
-        "github sponsors": f"https://github.com/{user}.png?size=460",
-        "gitlab": f"https://gitlab.com/uploads/-/system/user/avatar/{user}/avatar.png",
-        "codeberg": f"https://codeberg.org/avatars/{user}",
-        "keybase": f"https://keybase.io/{user}/picture",
-        "gravatar": f"https://www.gravatar.com/avatar/{user}?d=404&s=256",
-        "about.me": f"https://about.me/{user}/photo",
-    }
-    if platform in known:
-        return [known[platform]]
-    # Best-effort fallback via unavatar.io for common platforms
-    fallback = {
-        "twitter", "x", "instagram", "snapchat", "facebook", "tiktok",
-        "reddit", "youtube", "twitch", "pinterest", "linkedin", "medium",
-        "dev.to", "hackernews", "producthunt", "behance", "dribbble",
-        "flickr", "vimeo", "spotify", "telegram", "whatsapp",
-        "mastodon", "threads", "bluesky",
-    }
-    if platform in fallback:
-        return [f"https://unavatar.io/{platform}/{user}?fallback=false"]
-    return []
+_AVATAR_CLASS = _re.compile(
+    r'<[^>]*(?:class|id)\s*=\s*["\'][^"\']*(?:avatar|profile|user-avatar|userpic|pfp)[^"\']*["\'][^>]*>',
+    _re.I
+)
+_IMG_TAG = _re.compile(
+    r'<img[^>]+(?:src|data-src|data-original)=["\']([^"\']+)["\']', _re.I
+)
 
 
-def _dhash(data: bytes, size: int = 8) -> int | None:
-    if not _HAS_PIL:
-        return None
+def _norm(v: Any) -> str:
+    return (v or "").strip().lower()
+
+
+def _is_default_avatar(evidence: MediaEvidence, diagnostic: dict | None = None) -> bool:
+    if evidence.classification == "DEFAULT_AVATAR":
+        return True
+    if evidence.confidence == 0:
+        return True
+    if diagnostic and "default" in str(diagnostic).lower():
+        return True
+    return False
+
+
+async def _resolve_media(
+    client: Any,
+    platform: str,
+    username: str,
+    profile_url: str,
+) -> AdapterResult:
+    adapter = adapter_for_platform(platform)
+    if adapter is None:
+        return AdapterResult(found=False, profile_url=profile_url, diagnostic={
+            "code": "NO_ADAPTER", "platform": platform,
+            "message": f"No adapter for {platform}",
+        })
     try:
-        img = Image.open(io.BytesIO(data)).convert("L").resize(
-            (size + 1, size), Image.Resampling.LANCZOS
-        )
-    except Exception:
+        return await adapter.resolve(client, username, profile_url)
+    except Exception as exc:
+        return AdapterResult(found=False, profile_url=profile_url, diagnostic={
+            "code": "ADAPTER_ERROR", "platform": platform,
+            "message": str(exc),
+        })
+
+
+async def search_url(
+    client: Any,
+    url: str,
+    username: str | None = None,
+    platform: str | None = None,
+    use_cache: bool = True,
+    **kwargs,
+) -> ProfileEvidence | None:
+    if platform is None:
+        platform = detect_platform(url)
+    if not platform:
         return None
-    get_pixels = getattr(img, "get_flattened_data", None) or getattr(img, "getdata")
-    pixels = list(get_pixels())
-    bits = 0
-    for row in range(size):
-        base = row * (size + 1)
-        for col in range(size):
-            bits = (bits << 1) | (
-                1 if pixels[base + col] > pixels[base + col + 1] else 0
-            )
-    return bits
+    if username is None:
+        username = extract_username(url, platform)
+    if not username:
+        return None
+    if use_cache:
+        cache_key = f"media_{platform}_{username}".lower().replace("@", "")
+        cached = argis_cache.get(cache_key)
+        if cached is not None:
+            pe = ProfileEvidence(**cached)
+            if pe.media:
+                pe.media = [MediaEvidence(**m) for m in cached.get("media", [])]
+            return pe
+    profile_url = profile_url_for(platform, username) or url
+    result = await _resolve_media(client, platform, username, profile_url)
+    found = result.found
+    media = result.media or []
+    diag = result.diagnostic
+
+    pe = ProfileEvidence(
+        platform=platform,
+        category=PLATFORM_DEFAULTS.get(platform, {}).get("category", "unknown"),
+        username=username,
+        url=profile_url,
+        status="FOUND" if found else "NOT_FOUND",
+        display_name=result.display_name,
+        bio=result.bio,
+        avatar_url=result.profile_url if result.profile_url != profile_url else None,
+        media=media,
+        media_diagnostics=[diag] if diag else [],
+    )
+    if not found:
+        pe.status = "NOT_FOUND"
+    if use_cache:
+        argis_cache.set(cache_key, pe.__dict__)
+    return pe
 
 
-def _is_valid_avatar(data: bytes | None, url: str) -> tuple[bool, str]:
-    if not data:
-        return False, "empty image response"
-    if len(data) > _MAX_AVATAR_SIZE:
-        return False, f"image exceeds {_MAX_AVATAR_SIZE} bytes"
-    if _LOGO_PATTERNS.search(url):
-        return False, "URL looks like a logo/default asset"
-    if not _HAS_PIL:
-        # Keep media functional without the optional Pillow dependency.
-        return True, "validation limited because Pillow is not installed"
-    try:
-        image = Image.open(io.BytesIO(data))
-        image.verify()
-        image = Image.open(io.BytesIO(data))
-    except Exception:
-        return False, "response is not a decodable image"
-    width, height = image.size
-    if width < _MIN_AVATAR_SIZE or height < _MIN_AVATAR_SIZE:
-        return False, f"image too small ({width}x{height})"
-    aspect = width / height
-    if not _MIN_ASPECT <= aspect <= _MAX_ASPECT:
-        return False, f"avatar aspect ratio rejected ({aspect:.2f})"
-    return True, ""
+async def search_profile(
+    client: Any,
+    username: str,
+    platforms: list[str] | None = None,
+    use_cache: bool = True,
+    concurrency: int = 5,
+    **kwargs,
+) -> dict[str, ProfileEvidence]:
+    if platforms is None:
+        platforms = list(PLATFORM_DEFAULTS.keys())
+    sem = asyncio.Semaphore(concurrency)
+
+    async def search_one(platform: str) -> tuple[str, ProfileEvidence | None]:
+        url = profile_url_for(platform, username)
+        if not url:
+            return platform, None
+        async with sem:
+            pe = await search_url(client, url, username=username, platform=platform, use_cache=use_cache)
+            return platform, pe
+
+    tasks = [search_one(p) for p in platforms]
+    results = await asyncio.gather(*tasks)
+    return {p: pe for p, pe in results if pe is not None}
 
 
-_META_TAG = re.compile(r"<meta\b[^>]*>", re.I)
-_ATTR = re.compile(
-    r"([:\w-]+)\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))",
-    re.I,
-)
-_JSONLD = re.compile(
-    r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-    re.I | re.S,
-)
-_IMG_TAG = re.compile(r"<img\b[^>]*>", re.I)
+def collect_media(
+    profiles: dict[str, ProfileEvidence],
+    min_confidence: int | None = None,
+    classify: bool = True,
+    include_defaults: bool = False,
+) -> list[MediaEvidence]:
+    collected = []
+    for platform, profile in profiles.items():
+        for evidence in profile.media:
+            if not include_defaults and _is_default_avatar(evidence, None):
+                continue
+            if min_confidence is not None and evidence.confidence < min_confidence:
+                continue
+            collected.append(evidence)
+    collected.sort(key=lambda m: m.confidence, reverse=True)
+    return collected[:MediaDecisions.RECOMMENDED_MAX_MEDIA]
 
 
-def _attrs(tag: str) -> dict[str, str]:
-    values: dict[str, str] = {}
-    for match in _ATTR.finditer(tag):
-        values[match.group(1).lower()] = unescape(
-            match.group(2) or match.group(3) or match.group(4) or ""
-        )
-    return values
-
-
-def _json_images(value) -> list[str]:
-    found: list[str] = []
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if key.lower() in {"image", "avatar", "thumbnailurl", "contenturl"}:
-                if isinstance(child, str):
-                    found.append(child)
-                elif isinstance(child, dict) and isinstance(child.get("url"), str):
-                    found.append(child["url"])
-            found.extend(_json_images(child))
-    elif isinstance(value, list):
-        for child in value:
-            found.extend(_json_images(child))
-    return found
-
-
-def extract_avatar_candidates(page_html: str, page_url: str) -> list[str]:
-    """Extract likely profile images regardless of HTML attribute order."""
-    candidates: list[str] = []
-
-    # Structured data is strongest when the page describes a Person/ProfilePage.
-    for block in _JSONLD.findall(page_html):
-        try:
-            candidates.extend(_json_images(json.loads(unescape(block.strip()))))
-        except (json.JSONDecodeError, TypeError):
+def rank_media_candidates(profiles: dict[str, ProfileEvidence]) -> list[dict]:
+    candidates = []
+    for platform, profile in profiles.items():
+        if not profile.media:
             continue
+        for evidence in profile.media:
+            chosen = MediaDecisions.decide(profile)
+            candidates.append({
+                "platform": platform,
+                "username": profile.username,
+                "url": evidence.url,
+                "classification": evidence.classification,
+                "confidence": evidence.confidence,
+                "source": evidence.source,
+                "validated": evidence.validated,
+                "chosen": chosen == evidence.url,
+                "ascension": MediaDecisions.ascension_class(evidence.classification),
+            })
+    return sorted(candidates, key=lambda c: c["confidence"], reverse=True)
 
-    # Open Graph and Twitter metadata. Parsing attributes avoids the old bug where
-    # content="..." appearing before property="og:image" was silently missed.
-    for tag in _META_TAG.findall(page_html):
-        attrs = _attrs(tag)
-        key = (attrs.get("property") or attrs.get("name") or "").lower()
-        if key in {
-            "og:image", "og:image:url", "og:image:secure_url",
-            "twitter:image", "twitter:image:src",
-        }:
-            candidates.append(attrs.get("content", ""))
 
-    # Profile-specific image tags are a final fallback, not every image on page.
-    for tag in _IMG_TAG.findall(page_html):
-        attrs = _attrs(tag)
-        marker = " ".join(
-            [attrs.get("class", ""), attrs.get("id", ""), attrs.get("alt", "")]
-        ).lower()
-        if any(word in marker for word in ("avatar", "profile", "userpic", "photo")):
-            candidates.append(attrs.get("src") or attrs.get("data-src") or "")
-
-    resolved: list[str] = []
+def extract_avatar_candidates(html: str, profile_url: str | None = None) -> list[MediaEvidence]:
+    candidates: list[MediaEvidence] = []
     seen: set[str] = set()
-    for candidate in candidates:
-        candidate = unescape(str(candidate)).strip()
-        if not candidate or candidate.startswith(("data:", "blob:")):
-            continue
-        if candidate.startswith("//"):
-            candidate = "https:" + candidate
-        candidate = urljoin(page_url, candidate)
-        if candidate.startswith(("http://", "https://")) and candidate not in seen:
-            seen.add(candidate)
-            resolved.append(candidate)
-    return resolved
+
+    for m in _OG_IMAGE.finditer(html):
+        url = m.group(1)
+        if url and url not in seen:
+            seen.add(url)
+            candidates.append(MediaEvidence(
+                url=url, classification="PROFILE_AVATAR", confidence=70,
+                source="html.og_image",
+            ))
+
+    avatar_sections = set()
+    for m in _AVATAR_CLASS.finditer(html):
+        start = max(0, m.start() - 500)
+        end = min(len(html), m.end() + 500)
+        avatar_sections.add(html[start:end])
+
+    for section in avatar_sections:
+        for m in _IMG_TAG.finditer(section):
+            url = m.group(1)
+            if url and url not in seen:
+                seen.add(url)
+                candidates.append(MediaEvidence(
+                    url=url, classification="PROFILE_AVATAR", confidence=65,
+                    source="html.avatar_section_img",
+                ))
+
+    return candidates
 
 
 async def enrich_avatar(
-    profile: ProfileEvidence,
-    html: str | None = None,
-    fetcher=None,
+    pe: ProfileEvidence,
+    html: str,
+    fetcher: Any = None,
 ) -> ProfileEvidence:
-    """Fetch, validate, and attach a profile avatar.
-
-    Unlike the previous implementation, this fetches the profile page itself
-    when the caller does not pass HTML. That was the reason dossier media stayed
-    empty: normalized scan results do not preserve response HTML.
-    """
-    if profile.avatar_url:
-        return profile
-    if fetcher is None:
-        profile.warnings.append("avatar unavailable: no media fetcher")
-        return profile
-
-    page_html = html
-    if not page_html and profile.url:
-        fetched = await fetcher.get(profile.url, want_render=None)
-        if fetched and fetched.status == 200:
-            page_html = fetched.text
-        else:
-            profile.warnings.append("avatar unavailable: profile page fetch failed")
-
-    candidates = platform_avatar_candidates(profile)
-    if page_html:
-        candidates.extend(extract_avatar_candidates(page_html, profile.url))
-
-    # Preserve order and remove duplicates.
-    candidates = list(dict.fromkeys(candidates))
+    candidates = extract_avatar_candidates(html, pe.url)
     if not candidates:
-        profile.warnings.append("avatar unavailable: no profile-image candidate")
-        return profile
-
-    rejection_reasons: list[str] = []
-    for url in candidates[:12]:
-        data = await fetcher.get_bytes(url)
-        valid, reason = _is_valid_avatar(data, url)
-        if not valid:
-            rejection_reasons.append(reason)
-            continue
-        profile.avatar_url = url
-        digest = _dhash(data or b"")
-        if digest is not None:
-            profile.avatar_hash = f"{digest:016x}"
-        profile.evidence.append(
-            EvidenceItem(
-                field="avatar",
-                value=url,
-                source="media.validated_profile_image",
-                confidence=90 if platform_avatar_candidates(profile) else 76,
-            )
-        )
-        return profile
-
-    reason = rejection_reasons[0] if rejection_reasons else "all candidates failed"
-    profile.warnings.append(f"avatar rejected: {reason}")
-    return profile
+        return pe
+    if fetcher is not None:
+        from urllib.parse import urlparse
+        base = urlparse(pe.url)
+        valid = []
+        for c in candidates:
+            try:
+                resp = await fetcher.get(c.url)
+                if resp.status == 200 and not resp.error:
+                    c.validated = True
+                    c.confidence = min(c.confidence + 20, 100)
+                    valid.append(c)
+            except Exception:
+                valid.append(c)
+        candidates = valid
+    existing_urls = {m.url for m in pe.media}
+    for c in candidates:
+        if c.url not in existing_urls:
+            pe.media.append(c)
+            existing_urls.add(c.url)
+    return pe

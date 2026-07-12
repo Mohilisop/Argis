@@ -2024,6 +2024,54 @@ def search(
 
 
 @app.command(rich_help_panel="Analysis")
+def media(
+    targets: list[str] = typer.Argument(
+        ..., help="One or more usernames or profile URLs to search."
+    ),
+    platforms: Optional[list[str]] = typer.Option(
+        None, "--platform", "-p",
+        help="Limit to specific platforms (e.g. github instagram)."
+    ),
+    format: str = typer.Option(
+        "text", "--format", "-f", help="Output format: text or json."
+    ),
+    detailed: bool = typer.Option(
+        False, "--detailed", "-d", help="Show full media metadata."
+    ),
+    no_cache: bool = typer.Option(
+        False, "--no-cache", help="Bypass cached results."
+    ),
+    concurrency: int = typer.Option(
+        5, "--concurrency", "-c", help="Max concurrent platform searches."
+    ),
+):
+    """Search for profile media (avatars, banners) across platforms.
+
+    For each target username or URL, queries platform APIs and scrapes
+    profile pages to collect profile pictures and other media evidence.
+
+    \b
+    Examples:
+      argis media johndoe
+      argis media johndoe --platform github instagram --detailed
+      argis media https://github.com/johndoe --format json
+      argis media user1 user2 user3 --concurrency 3
+    """
+    from types import SimpleNamespace
+    from argis.media_runtime import media_runtime
+    args = SimpleNamespace(
+        targets=targets,
+        platforms=platforms,
+        format=format,
+        detailed=detailed,
+        no_cache=no_cache,
+        concurrency=concurrency,
+    )
+    result = asyncio.run(media_runtime(args))
+    console.print(result)
+
+
+@app.command(rich_help_panel="Analysis")
 def stats(
     top: int = typer.Option(15, "--top", help="Number of top platforms to show."),
 ):

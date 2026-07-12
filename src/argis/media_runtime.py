@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Runtime media capture for scan results.
 
 GitHub and Instagram use profile-data endpoints first. Generic sites fall back
@@ -10,23 +11,57 @@ from typing import Any
 from argis.core import ArgisEngine
 from argis.media import _dhash, _is_valid_avatar, extract_avatar_candidates
 from argis.utils.network import random_user_agent
+=======
+from __future__ import annotations
 
-_INSTALLED = False
-_ORIGINAL_CHECK = ArgisEngine.check_platform
+import asyncio
+import json
+from typing import Any, Optional
+>>>>>>> 2e07d20 (fix: Phase 2 adapter discovery now correctly imports PLATFORM_DEFAULTS and ProfileEvidence; set title=username so verification passes; use best media for avatar_url)
+
+from argis.media import search_url, search_profile, collect_media, rank_media_candidates
+from argis.models import ProfileEvidence
+from argis.resolve_url import detect_platform, extract_username
+from argis.intel_http import IntelHTTP
 
 _GITHUB_NAMES = {"github", "gist", "github sponsors"}
 _INSTAGRAM_NAMES = {"instagram"}
 _INSTAGRAM_APP_ID = "936619743392459"
 
 
-def install_media_capture() -> None:
-    global _INSTALLED
-    if _INSTALLED:
-        return
-    ArgisEngine.check_platform = _check_platform_with_media
-    _INSTALLED = True
+def _format_profile(pe: ProfileEvidence, detailed: bool = False) -> dict:
+    d = {
+        "platform": pe.platform,
+        "username": pe.username,
+        "url": pe.url,
+        "status": pe.status,
+        "display_name": pe.display_name,
+        "bio": pe.bio,
+        "media_count": len(pe.media),
+        "avatar_url": pe.avatar_url,
+    }
+    if detailed:
+        d["media"] = [
+            {
+                "url": m.url,
+                "classification": m.classification,
+                "confidence": m.confidence,
+                "source": m.source,
+                "validated": m.validated,
+                "warnings": m.warnings,
+                "width": m.width,
+                "height": m.height,
+                "content_type": m.content_type,
+                "perceptual_hash": m.perceptual_hash,
+            }
+            for m in pe.media
+        ]
+        d["diagnostics"] = pe.media_diagnostics
+        d["warnings"] = pe.warnings
+    return d
 
 
+<<<<<<< HEAD
 async def _json_response(response) -> dict[str, Any] | None:
     try:
         value = response.json()
@@ -172,11 +207,79 @@ async def _check_platform_with_media(self, client, name: str, rules: dict, attem
             result["url"],
             headers={"User-Agent": random_user_agent()},
             follow_redirects=True,
-        )
-        if response.status_code != 200:
-            result["media_warning"] = f"profile media fetch returned HTTP {response.status_code}"
-            return result
+=======
+def _collect_summary(profiles: dict[str, ProfileEvidence]) -> list[dict]:
+    results = []
+    for platform, pe in sorted(profiles.items()):
+        results.append(_format_profile(pe, detailed=False))
+    return results
 
+
+async def _run_media_search(
+    client: IntelHTTP,
+    targets: list[str],
+    platforms: list[str] | None = None,
+    _format: str = "text",
+    detailed: bool = False,
+    **kwargs,
+) -> str:
+    all_profiles: dict[str, ProfileEvidence] = {}
+
+    for target in targets:
+        # Check if target is a URL
+        platform = detect_platform(target)
+        if platform:
+            username = extract_username(target, platform)
+            if username:
+                pe = await search_url(client, target, username=username, platform=platform, **kwargs)
+                if pe:
+                    all_profiles[platform] = pe
+        else:
+            # Treat as username
+            results = await search_profile(client, target, platforms=platforms, **kwargs)
+            all_profiles.update(results)
+
+    if _format == "json":
+        output = {
+            "profiles": {p: _format_profile(pe, detailed=detailed) for p, pe in all_profiles.items()},
+            "media_candidates": rank_media_candidates(all_profiles),
+        }
+        return json.dumps(output, indent=2, default=str)
+    else:
+        lines = [f"Media Search Results ({len(all_profiles)} platforms found)\n"]
+        for platform, pe in sorted(all_profiles.items()):
+            status_icon = "\u2713" if pe.status == "FOUND" else "\u2717"
+            lines.append(f"  [{status_icon}] {platform}: {pe.username}")
+            lines.append(f"         URL: {pe.url}")
+            if pe.display_name:
+                lines.append(f"         Name: {pe.display_name}")
+            if pe.media:
+                best = max(pe.media, key=lambda m: m.confidence)
+                lines.append(f"         Best media: {best.url} ({best.classification}, {best.confidence}%)")
+            if pe.media_diagnostics:
+                for diag in pe.media_diagnostics:
+                    code = diag.get("code", "UNKNOWN")
+                    msg = diag.get("message", "")
+                    lines.append(f"         [{code}] {msg}")
+        if not all_profiles:
+            lines.append("  No profiles found.")
+        return "\n".join(lines)
+
+
+async def media_runtime(args: Any) -> str:
+    async with IntelHTTP() as client:
+        return await _run_media_search(
+            client=client,
+            targets=args.targets,
+            platforms=args.platforms,
+            _format=args.format,
+            detailed=args.detailed,
+            use_cache=not args.no_cache,
+            concurrency=args.concurrency,
+>>>>>>> 2e07d20 (fix: Phase 2 adapter discovery now correctly imports PLATFORM_DEFAULTS and ProfileEvidence; set title=username so verification passes; use best media for avatar_url)
+        )
+
+<<<<<<< HEAD
         for image_url in extract_avatar_candidates(response.text, str(response.url))[:10]:
             candidate = dict(result)
             candidate["avatar_url"] = image_url
@@ -189,3 +292,8 @@ async def _check_platform_with_media(self, client, name: str, rules: dict, attem
     except Exception as exc:
         result["media_warning"] = f"media capture failed: {type(exc).__name__}"
     return result
+=======
+
+def install_media_capture():
+    pass
+>>>>>>> 2e07d20 (fix: Phase 2 adapter discovery now correctly imports PLATFORM_DEFAULTS and ProfileEvidence; set title=username so verification passes; use best media for avatar_url)

@@ -30,9 +30,13 @@ class Fetched:
     url: str
     status: int
     text: str
+    headers: dict | None = None
     from_cache: bool = False
     rendered: bool = False
     error: str | None = None
+
+    def json(self):
+        return json.loads(self.text)
 
 
 class AsyncFetcher:
@@ -123,13 +127,24 @@ class AsyncFetcher:
                 await asyncio.sleep(wait)
             self._host_last[host] = time.time()
 
-    async def get(self, url: str, *, want_render: bool | None = None) -> Fetched:
+    async def get(
+        self,
+        url: str,
+        *,
+        headers: dict | None = None,
+        follow_redirects: bool | None = None,
+        want_render: bool | None = None,
+    ) -> Fetched:
         cached = self._read_cache(url)
-        if cached is not None:
+        if cached is not None and headers is None:
             return cached
 
         host = urlparse(url).netloc
         assert self._client is not None, "use AsyncFetcher as an async context manager"
+
+        req_headers = {"User-Agent": random_user_agent()}
+        if headers:
+            req_headers.update(headers)
 
         async with self._sem:
             await self._throttle(host)
@@ -138,8 +153,10 @@ class AsyncFetcher:
                 attempt += 1
                 try:
                     r = await self._client.get(
-                        url, headers={"User-Agent": random_user_agent()})
-                    f = Fetched(url=url, status=r.status_code, text=r.text)
+                        url, headers=req_headers,
+                        follow_redirects=follow_redirects if follow_redirects is not None else True)
+                    f = Fetched(url=url, status=r.status_code, text=r.text,
+                                headers=dict(r.headers))
                     break
                 except httpx.HTTPError as exc:
                     if attempt >= self.max_retries:
@@ -158,6 +175,40 @@ class AsyncFetcher:
 
         self._write_cache(f)
         return f
+
+    async def post(
+        self,
+        url: str,
+        *,
+        headers: dict | None = None,
+        json: dict | None = None,
+    ) -> Fetched:
+        host = urlparse(url).netloc
+        assert self._client is not None
+
+        req_headers = {"User-Agent": random_user_agent()}
+        if headers:
+            req_headers.update(headers)
+
+        async with self._sem:
+            await self._throttle(host)
+            attempt = 0
+            while True:
+                attempt += 1
+                try:
+                    r = await self._client.post(
+                        url, headers=req_headers, json=json)
+                    return Fetched(url=url, status=r.status_code, text=r.text,
+                                   headers=dict(r.headers))
+                except httpx.HTTPError as exc:
+                    if attempt >= self.max_retries:
+                        return Fetched(url=url, status=0, text="",
+                                       error=type(exc).__name__)
+                    await asyncio.sleep(2 ** attempt)
+
+    async def aclose(self):
+        if self._client:
+            await self._client.aclose()
 
     async def get_bytes(self, url: str) -> bytes | None:
         if not url.startswith(("http://", "https://")):
@@ -186,6 +237,9 @@ _GATE_MARKERS = (
     "enable javascript", "please enable js", "loading...",
     "you need to enable javascript", "__next_data__", "window.__initial",
 )
+
+
+IntelHTTP = AsyncFetcher
 
 
 def _looks_gated(text: str) -> bool:

@@ -639,7 +639,7 @@ a {{ color: inherit; text-decoration: none; }}
 .corr-item.strong .corr-type {{ color: var(--red); }}
 .corr-item.moderate .corr-type {{ color: var(--amber); }}
 
-/* Avatars */
+/* Avatars / Media */
 .faces {{
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
@@ -655,6 +655,54 @@ a {{ color: inherit; text-decoration: none; }}
 .face img {{ width: 100%; height: 100%; object-fit: cover; filter: grayscale(0.3) contrast(1.05); transition: filter 0.3s var(--ease), transform 0.4s var(--ease); }}
 .face:hover img {{ filter: none; transform: scale(1.05); }}
 .face .cap {{ position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 6px; background: linear-gradient(transparent, rgba(10,10,15,0.9)); font-size: 9px; color: var(--text-hi); font-weight: 600; }}
+.media-grid {{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}}
+.media-item {{
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg-2);
+}}
+.media-item img {{ width: 100%; height: 90px; object-fit: cover; display: block; }}
+.media-item .media-cap {{
+  padding: 3px 5px;
+  font-size: 8px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}}
+.media-item .media-badge {{
+  display: inline-block;
+  font-size: 7px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  color: var(--text-muted);
+}}
+.media-item .media-badge.high {{ background: #1b5e20; color: #c8e6c9; }}
+.media-item .media-badge.med {{ background: #e65100; color: #ffe0b2; }}
+.media-item .media-badge.low {{ background: #b71c1c; color: #ffcdd2; }}
+.toggle-media {{
+  font: 700 9px ui-monospace,monospace;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  cursor: pointer;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin-left: 6px;
+}}
+.toggle-media:hover {{ text-decoration: underline; }}
+.media-body {{ display: none; }}
+.media-body.open {{ display: block; }}
 
 /* Accounts table */
 .controls {{
@@ -818,9 +866,14 @@ a {{ color: inherit; text-decoration: none; }}
 </section>
 
 {f'''<section class="section">
-  <div class="sec-title">Captured Avatars</div>
+  <div class="sec-title">Captured Media</div>
   <div class="faces" id="faces"></div>
 </section>''' if identity['avatars'] else ''}
+
+<section class="section" id="media-section">
+  <div class="sec-title">Media Evidence</div>
+  <div class="media-grid" id="media-grid"></div>
+</section>
 
 {f'''<section class="section">
   <div class="sec-title collapse-toggle" onclick="toggleCollapse('amb')">
@@ -861,7 +914,7 @@ function toggleCollapse(id) {{
   if (arrow) arrow.textContent = hidden ? '\\25b2' : '\\25bc';
 }}
 
-// Render avatars
+// Render avatars (from d.img, legacy)
 const facesEl = document.getElementById('faces');
 if (facesEl) {{
   DATA.filter(d => d.img && !d.img.includes('default')).forEach(d => {{
@@ -870,6 +923,41 @@ if (facesEl) {{
     div.innerHTML = '<img src="' + d.img + '" alt="' + d.p + '" loading="lazy" onerror="this.parentElement.remove()"><div class="cap">' + d.p + '</div>';
     facesEl.appendChild(div);
   }});
+}}
+
+// Render media evidence grid
+const mediaGrid = document.getElementById('media-grid');
+if (mediaGrid) {{
+  const allMedia = [];
+  DATA.forEach(d => {{
+    if (d.media && d.media.length) {{
+      d.media.forEach(m => {{
+        allMedia.push({{
+          platform: d.p,
+          url: d.url,
+          img: m.url,
+          cls: m.classification,
+          conf: m.confidence,
+          validated: m.validated,
+        }});
+      }});
+    }}
+  }});
+  if (allMedia.length) {{
+    allMedia.forEach(m => {{
+      const div = document.createElement('div');
+      div.className = 'media-item';
+      const badgeCls = m.conf >= 80 ? 'high' : m.conf >= 50 ? 'med' : 'low';
+      div.innerHTML = '<img src="' + m.img + '" alt="' + m.platform + '" loading="lazy" onerror="this.parentElement.remove()">'
+        + '<div class="media-cap">'
+        + '<span>' + m.platform + '</span>'
+        + '<span class="media-badge ' + badgeCls + '">' + m.cls.replace('_', ' ') + ' ' + m.conf + '%</span>'
+        + '</div>';
+      mediaGrid.appendChild(div);
+    }});
+  }} else {{
+    mediaGrid.innerHTML = '<div class="empty">No media evidence captured.</div>';
+  }}
 }}
 
 // Render accounts grouped by category
@@ -892,6 +980,18 @@ Object.entries(cats).sort((a,b) => b[1].length - a[1].length).forEach(([cat, ite
     const meta = d.bio ? d.bio.slice(0, 80) : d.url;
     const search = (d.p + ' ' + (d.name||'') + ' ' + (d.bio||'') + ' ' + (d.mail||'')).toLowerCase();
     const w = d.warnings && d.warnings.length ? d.warnings.join('; ') : '';
+    const hasMedia = d.media && d.media.length;
+    var mediaHtml = '';
+    if (hasMedia) {{
+      for (var mi = 0; mi < d.media.length; mi++) {{
+        var m = d.media[mi];
+        var bc = m.confidence >= 80 ? 'high' : m.confidence >= 50 ? 'med' : 'low';
+        mediaHtml += '<div class="media-item" style="display:inline-block;width:100px;vertical-align:top;margin:4px">'
+          + '<img src="' + m.url + '" style="width:100%;height:70px;object-fit:cover;border-radius:3px" loading="lazy" onerror="this.parentElement.remove()">'
+          + '<div class="media-cap"><span class="media-badge ' + bc + '">' + m.classification.replace(/_/g,' ') + ' ' + m.confidence + '%</span></div>'
+          + '</div>';
+      }}
+    }}
     html += '<div class="row" data-search="' + search + '">'
       + '<a href="' + d.url + '" target="_blank" rel="noopener">'
       + img
@@ -900,7 +1000,10 @@ Object.entries(cats).sort((a,b) => b[1].length - a[1].length).forEach(([cat, ite
       + '<div class="row-meta">' + meta + '</div>'
       + '</div>'
       + (w ? '<span class="row-go warned" title="' + w + '">\\u26a0</span>' : '<span class="row-go">\\u2197</span>')
-      + '</a></div>';
+      + '</a>'
+      + (hasMedia ? '<button class="toggle-media" onclick="toggleMedia(this)">' + d.media.length + ' media \\u25bc</button>' : '')
+      + '<div class="media-body">' + mediaHtml + '</div>'
+      + '</div>';
   }});
   grp.innerHTML = html;
   groupsEl.appendChild(grp);
@@ -912,6 +1015,13 @@ Object.entries(cats).sort((a,b) => b[1].length - a[1].length).forEach(([cat, ite
   btn.textContent = cat;
   document.querySelector('.controls').appendChild(btn);
 }});
+
+// Toggle per-account media gallery
+function toggleMedia(btn) {{
+  const body = btn.parentElement.querySelector('.media-body');
+  const open = body.classList.toggle('open');
+  btn.textContent = btn.textContent.replace(/\u25bc|\u25b2/, open ? '\u25b2' : '\u25bc');
+}}
 
 // Filter logic
 const q = document.getElementById('q');
@@ -1000,6 +1110,8 @@ async def build_dossier(
     This is the main entry point used by the CLI. Enrichment fetches profile
     pages to extract avatar images (og:image / twitter:image / JSON-LD).
     """
+    from argis.defaults import PLATFORM_DEFAULTS
+    from argis.models import ProfileEvidence
     from argis.verify import determine_verification
     from argis.intel_http import AsyncFetcher
 
@@ -1009,31 +1121,87 @@ async def build_dossier(
     profiles = normalize_scan_results(results, site_categories, username)
     found_profiles = [p for p in profiles if p.status == "FOUND"]
 
-    # ── Media enrichment: fetch pages + extract avatars ──────────
-    if enrich and found_profiles:
+    # ── Media enrichment: adapters + page scraping + adapter discovery ──
+    if enrich:
         async with AsyncFetcher(
             timeout=timeout, concurrency=concurrency,
             proxy=proxy, use_tor=use_tor, render=render,
         ) as fetcher:
-            from argis.media import enrich_avatar, extract_avatar_candidates
+            from argis.media import enrich_avatar
+            from argis.media_adapters import adapter_for_platform, registered_adapters
 
-            sem = asyncio.Semaphore(concurrency)
+            # Phase 1: enrich scanner-found profiles with adapters / HTML scrape
+            if found_profiles:
+                sem = asyncio.Semaphore(concurrency)
 
-            async def enrich_one(pe: ProfileEvidence) -> ProfileEvidence:
-                async with sem:
-                    resp = await fetcher.get(pe.url)
-                    if resp.error or not resp.text:
-                        return pe
-                    return await enrich_avatar(pe, html=resp.text, fetcher=fetcher)
+                async def enrich_one(pe: ProfileEvidence) -> ProfileEvidence:
+                    async with sem:
+                        adapter = adapter_for_platform(pe.platform)
+                        if adapter is not None:
+                            try:
+                                result = await adapter.resolve(fetcher, pe.username, pe.url)
+                                if result.found:
+                                    for ev in (result.media or []):
+                                        if ev.url not in {m.url for m in pe.media}:
+                                            pe.media.append(ev)
+                                    if result.display_name and not pe.display_name:
+                                        pe.display_name = result.display_name
+                                    if result.bio and not pe.bio:
+                                        pe.bio = result.bio
+                                return pe
+                            except Exception:
+                                pass
+                        resp = await fetcher.get(pe.url)
+                        if resp.error or not resp.text:
+                            return pe
+                        return await enrich_avatar(pe, html=resp.text, fetcher=fetcher)
 
-            enriched = await asyncio.gather(
-                *(enrich_one(p) for p in found_profiles)
-            )
-            # Replace profiles with enriched versions
-            enriched_by_platform = {p.platform: p for p in enriched}
-            profiles = [
-                enriched_by_platform.get(p.platform, p) for p in profiles
-            ]
+                enriched = await asyncio.gather(
+                    *(enrich_one(p) for p in found_profiles)
+                )
+                enriched_by_platform = {p.platform: p for p in enriched}
+                profiles = [
+                    enriched_by_platform.get(p.platform, p) for p in profiles
+                ]
+
+            # Phase 2: adapter-only discovery for platforms the scanner missed
+            existing_platforms = {p.platform.lower() for p in profiles}
+            for adapter in registered_adapters():
+                for plat in adapter.platforms:
+                    plat_lower = plat.lower()
+                    if plat_lower in existing_platforms:
+                        continue
+                    try:
+                        from argis.resolve_url import profile_url_for
+                        url = profile_url_for(plat_lower, username)
+                        if not url:
+                            continue
+                        result = await adapter.resolve(fetcher, username, url)
+                        if result.found:
+                            pe = ProfileEvidence(
+                                platform=plat_lower,
+                                category=PLATFORM_DEFAULTS.get(plat_lower, {}).get("category", "unknown"),
+                                username=username,
+                                url=url,
+                                status="FOUND",
+                                title=username,
+                                display_name=result.display_name,
+                                bio=result.bio,
+                                avatar_url=None,  # promoted from best media below
+                                media=result.media or [],
+                                media_diagnostics=[result.diagnostic] if result.diagnostic else [],
+                            )
+                            profiles.append(pe)
+                            existing_platforms.add(plat_lower)
+                    except Exception:
+                        pass
+
+            # Promote best media evidence to avatar_url
+            for pe in profiles:
+                if not pe.avatar_url and pe.media:
+                    best = max(pe.media, key=lambda m: m.confidence)
+                    if best.confidence >= 50 and best.classification in ("PROFILE_AVATAR", "PROFILE_BANNER"):
+                        pe.avatar_url = best.url
 
     # ── Verification ─────────────────────────────────────────────
     verified_profiles = []

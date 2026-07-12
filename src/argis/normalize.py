@@ -164,6 +164,20 @@ def profile_evidence_to_dict(pe: ProfileEvidence) -> dict:
         "confidence": pe.confidence,
         "verification": pe.verification,
         "warnings": pe.warnings,
+        "media": [
+            {
+                "url": m.url,
+                "classification": m.classification,
+                "confidence": m.confidence,
+                "source": m.source,
+                "validated": m.validated,
+                "width": m.width,
+                "height": m.height,
+                "content_type": m.content_type,
+                "perceptual_hash": m.perceptual_hash,
+            }
+            for m in pe.media
+        ],
     }
 
 
