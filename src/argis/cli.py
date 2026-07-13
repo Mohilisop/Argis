@@ -50,11 +50,11 @@ def main(
     if ctx.invoked_subcommand is None:
         from rich.text import Text
         logo = Text()
-        logo.append("  █████  ██████  ██████  ██ ███████ \n")
-        logo.append(" ██   ██ ██   ██ ██   ██ ██ ██      \n", style="cyan")
-        logo.append(" ███████ ██████  ██████  ██ ███████ \n", style="cyan")
-        logo.append(" ██   ██ ██   ██ ██   ██ ██      ██ \n", style="cyan")
-        logo.append(" ██   ██ ██   ██ ██   ██ ██ ███████ \n", style="cyan")
+        logo.append(" █████  ██████   █████  ██████  █████ \n")
+        logo.append("██   ██  ██   ██  ██      ██     ██    \n", style="cyan")
+        logo.append("██████  ██████  ██ ███    ██    ██████\n", style="cyan")
+        logo.append("██   ██  ██ ██   ██  ██    ██       ██ \n", style="cyan")
+        logo.append("██   ██  ██  ██   █████  ██████  ██████\n", style="cyan")
         logo.append("  ⚡ SIGINT COLLECTOR • v0.7.0     \n", style="dim")
         console.print(logo)
         console.print("[bold]Usage:[/bold] [green]argis[/green] [cyan]<command>[/cyan] [dim][options][/dim]\n")
