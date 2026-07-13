@@ -24,16 +24,14 @@ console = Console()
 
 LOGO_SUB = "[cyan]⚡ SIGINT COLLECTOR[/cyan]"
 
-# Blocky ASCII wordmark for "ARGIS", one string per row.
 _ARGIS_ART = [
-    " #    ##    ##   ###   ## ",
-    "# #   # #   #     #   #   ",
-    "###   ##    # #   #    #  ",
-    "# #   # #   # #   #     # ",
-    "# #   # #    ##   ###  ## ",
+    " # ## ## ### ## ",
+    "# # # # # # # ",
+    "### ## # # # # ",
+    "# # # # # # # # ",
+    "# # # # ## ### ## ",
 ]
 
-# Gradient endpoints (cyan -> blue), matching the eye logo's palette.
 _GRAD_START = (110, 231, 255)
 _GRAD_END = (58, 120, 235)
 
@@ -51,12 +49,6 @@ def _lerp_color(t: float) -> str:
 
 
 def _gradient_line(line: str, revealed: int | None = None, shimmer_center: float | None = None) -> Text:
-    """Render one row of the wordmark with a cyan->blue gradient.
-
-    ``revealed`` limits how many characters (left to right) are drawn, letting
-    callers build a typewriter-style reveal. ``shimmer_center`` brightens
-    characters near that column index, used for the sweeping highlight pass.
-    """
     text = Text()
     width = max(len(line) - 1, 1)
     limit = len(line) if revealed is None else max(0, min(revealed, len(line)))
@@ -99,7 +91,6 @@ def _print_logo() -> None:
 
 
 def _animate_logo() -> None:
-    """Play a short reveal + shimmer intro before settling on the static logo."""
     lengths = [len(row) for row in _ARGIS_ART]
     total_width = max(lengths)
     revealed = [0] * len(_ARGIS_ART)
@@ -117,7 +108,6 @@ def _animate_logo() -> None:
             live.update(_logo_panel(lengths, float(pos)), refresh=True)
             time.sleep(0.02)
 
-    # Leave the final, non-transient frame in the scrollback.
     _print_logo()
 
 
@@ -132,19 +122,27 @@ def _show_logo(animate: bool = True) -> None:
 
 
 STATUS_BADGES = {
-    "FOUND": "[bold green]\u2713[/bold green]",
-    "NOT_FOUND": "[dim]\u2014[/dim]",
+    "FOUND": "[bold green]◉[/bold green]",
+    "NOT_FOUND": "[dim]·[/dim]",
     "UNKNOWN": "[yellow]?[/yellow]",
-    "TIMEOUT": "[yellow]\u23f3[/yellow]",
-    "BLOCKED": "[bold magenta]\u26a0[/bold magenta]",
+    "TIMEOUT": "[yellow]⏳[/yellow]",
+    "BLOCKED": "[magenta]⊘[/magenta]",
 }
 
 STATUS_STYLES = {
     "FOUND": "bold green",
-    "NOT_FOUND": "dim red",
+    "NOT_FOUND": "dim",
     "UNKNOWN": "yellow",
     "TIMEOUT": "yellow",
-    "BLOCKED": "bold magenta",
+    "BLOCKED": "magenta",
+}
+
+_STATUS_LABEL = {
+    "FOUND": "FOUND",
+    "NOT_FOUND": "not found",
+    "UNKNOWN": "unknown",
+    "TIMEOUT": "timeout",
+    "BLOCKED": "blocked",
 }
 
 
@@ -176,38 +174,44 @@ def print_banner(username: str, animate: bool = True) -> None:
 
 
 def print_found(name: str, url: str) -> None:
-    console.print(f"  [bold green]\u2713[/bold green] [white]{name}:[/white] "
-                  f"[underline cyan]{url}[/underline cyan]")
+    console.print(
+        f"  [green]├─[/green] [bold green]◉[/bold green] [bold white]{name}[/bold white]  "
+        f"[underline cyan]{url}[/underline cyan]"
+    )
 
 
 def _style_status_cell(status: str) -> str:
     badge = STATUS_BADGES.get(status, "")
     style = STATUS_STYLES.get(status, "white")
-    return f"[{style}]{badge} {status}[/{style}]"
+    label = _STATUS_LABEL.get(status, status.lower())
+    return f"{badge} [{style}]{label}[/{style}]"
 
 
 def print_results_table(results: dict[str, dict], username: str) -> None:
     table = Table(
-        title=f"[bold white]Scan results for @{username}[/bold white]",
-        box=box.ROUNDED,
+        title=f"[bold white]◉ scan results[/bold white] [dim]for[/dim] [bold cyan]@{username}[/bold cyan]",
+        box=box.HEAVY_HEAD,
         header_style=Style(color="cyan", bold=True),
         title_style="bold",
-        border_style="grey37",
+        border_style="grey30",
+        row_styles=["", "on grey11"],
         padding=(0, 1),
+        expand=True,
     )
-    table.add_column("#", style="dim", no_wrap=True, width=3)
+    table.add_column("#", style="dim", no_wrap=True, width=4, justify="right")
     table.add_column("Platform", style="white", no_wrap=True)
-    table.add_column("Status")
+    table.add_column("Status", no_wrap=True)
     table.add_column("URL", style="cyan", overflow="fold")
 
     for i, (name, info) in enumerate(sorted(results.items()), 1):
         status = info["status"]
         is_found = status == "FOUND"
+        url = info["url"]
         table.add_row(
-            str(i) if not is_found else f"[bold]{i}[/bold]",
-            name if not is_found else f"[bold]{name}[/bold]",
+            f"[bold cyan]{i}[/bold cyan]" if is_found else str(i),
+            f"[bold green]{name}[/bold green]" if is_found else name,
             _style_status_cell(status),
-            info["url"],
+            url if is_found else f"[dim]{url}[/dim]",
         )
 
     console.print(table)
@@ -219,15 +223,16 @@ def print_compact_results(results: dict[str, dict], username: str) -> None:
     rest.sort(key=lambda x: x[1].get("status", ""))
 
     table = Table(
-        title=f"[bold white]Scan results for @{username}[/bold white]",
-        box=box.ROUNDED,
+        title=f"[bold white]◉ scan results[/bold white] [dim]for[/dim] [bold cyan]@{username}[/bold cyan]",
+        box=box.HEAVY_HEAD,
         header_style=Style(color="cyan", bold=True),
         title_style="bold",
-        border_style="grey37",
+        border_style="grey30",
         padding=(0, 1),
+        expand=True,
     )
     table.add_column("Platform", style="white", no_wrap=True)
-    table.add_column("Status")
+    table.add_column("Status", no_wrap=True)
     table.add_column("URL", style="cyan", overflow="fold")
 
     if found:
@@ -243,10 +248,38 @@ def print_compact_results(results: dict[str, dict], username: str) -> None:
         table.add_row(
             f"[{s}]{name}[/{s}]",
             _style_status_cell(info["status"]),
-            f"[{s}]{info['url']}[/{s}]",
+            f"[dim]{info['url']}[/dim]",
         )
 
     console.print(table)
+
+
+def _status_bar(found: int, blocked: int, timed_out: int, unknown: int, other: int, width: int = 46) -> Text:
+    """A single proportional bar summarizing the scan outcome mix."""
+    total = max(found + blocked + timed_out + unknown + other, 1)
+    segments = [
+        (found, "green"),
+        (blocked, "magenta"),
+        (timed_out, "yellow"),
+        (unknown, "yellow3"),
+        (other, "grey37"),
+    ]
+    bar = Text()
+    used = 0
+    for count, color in segments:
+        if count <= 0:
+            continue
+        cells = round(width * count / total)
+        if cells == 0:
+            cells = 1
+        used += cells
+        bar.append("█" * cells, style=color)
+    # trim/pad to width
+    if used > width:
+        bar.truncate(width)
+    elif used < width:
+        bar.append("█" * (width - used), style="grey19")
+    return bar
 
 
 def print_summary(results: dict[str, dict]) -> None:
@@ -255,19 +288,36 @@ def print_summary(results: dict[str, dict]) -> None:
     blocked = sum(1 for r in results.values() if r["status"] == "BLOCKED")
     timed_out = sum(1 for r in results.values() if r["status"] == "TIMEOUT")
     unknown = sum(1 for r in results.values() if r["status"] == "UNKNOWN")
+    not_found = sum(1 for r in results.values() if r["status"] == "NOT_FOUND")
 
-    details = f"[bold green]{found} found[/bold green]"
-    if blocked:
-        details += f"  [bold magenta]{blocked} blocked[/bold magenta]"
-    if timed_out:
-        details += f"  [yellow]{timed_out} timeout[/yellow]"
-    if unknown:
-        details += f"  [yellow]{unknown} unknown[/yellow]"
+    chips = Text()
+    chips.append("◉ ", style="bold green")
+    chips.append(f"{found} found", style="bold green")
+    chips.append("    ")
+    chips.append("⊘ ", style="magenta")
+    chips.append(f"{blocked} blocked", style="magenta")
+    chips.append("    ")
+    chips.append("⏳ ", style="yellow")
+    chips.append(f"{timed_out} timeout", style="yellow")
+    chips.append("    ")
+    chips.append("? ", style="yellow3")
+    chips.append(f"{unknown} unknown", style="yellow3")
+
+    bar = _status_bar(found, blocked, timed_out, unknown, not_found)
+    footer = Text()
+    footer.append(f"{total}", style="bold white")
+    footer.append(" platforms scanned", style="dim")
+
+    body = Text()
+    body.append_text(chips)
+    body.append("\n\n")
+    body.append_text(bar)
+    body.append("\n")
+    body.append_text(footer)
 
     console.print(
         Panel.fit(
-            f"{details}\n"
-            f"[dim]{total} platforms scanned[/dim]",
+            body,
             title="[bold]Summary[/bold]",
             border_style="cyan",
             padding=(1, 2),
@@ -287,9 +337,9 @@ def print_diff(diff: dict) -> None:
     table.add_column("URL", style="cyan", overflow="fold")
 
     for name, url in diff.get("added", []):
-        table.add_row("[bold green]\u2713 REGISTERED[/bold green]", name, url)
+        table.add_row("[bold green]✓ REGISTERED[/bold green]", name, url)
     for name, url in diff.get("removed", []):
-        table.add_row("[bold red]\u2717 DELETED[/bold red]", name, url)
+        table.add_row("[bold red]✗ DELETED[/bold red]", name, url)
 
     if not diff.get("added") and not diff.get("removed"):
         console.print("[dim]No changes detected since the last scan.[/dim]")
@@ -475,9 +525,9 @@ def print_geoip_results(geo) -> None:
 
     if geo.error:
         if "private" in geo.error.lower():
-            console.print(f"[dim][yellow]\u26a0 {geo.error}[/yellow][/dim]")
+            console.print(f"[dim][yellow]⚠ {geo.error}[/yellow][/dim]")
         elif "API key" in geo.error.lower():
-            console.print(f"[bold red]\u2716 {geo.error}[/bold red]")
+            console.print(f"[bold red]✖ {geo.error}[/bold red]")
         else:
             console.print(f"[dim]Geolocation failed: {geo.error}[/dim]")
         return
@@ -672,10 +722,25 @@ def print_error_summary(by_error: dict[str, int]) -> None:
 
 def print_completion(elapsed: float, found: int, total: int) -> None:
     rate = f"{total / elapsed:.1f}/s" if elapsed > 0 else "-"
+    pct = (found / total * 100) if total else 0
+    gauge_width = 24
+    filled = round(gauge_width * found / total) if total else 0
+    gauge = Text()
+    gauge.append("█" * filled, style="green")
+    gauge.append("█" * (gauge_width - filled), style="grey19")
+
+    body = Text()
+    body.append(f"{found}", style="bold green")
+    body.append(" / ", style="dim")
+    body.append(f"{total}", style="bold white")
+    body.append(" found", style="dim")
+    body.append(f"   {pct:.0f}%", style="bold green")
+    body.append("\n")
+    body.append_text(gauge)
+    body.append("\n")
+    body.append(f"{elapsed:.1f}s", style="bold cyan")
+    body.append(f"  ·  {rate}", style="dim")
+    body.append("   ✓ scan complete", style="green")
+
     console.print()
-    console.print(Panel.fit(
-        f"[bold white]{found}[/bold white] / [bold white]{total}[/bold white] found "
-        f"in [bold cyan]{elapsed:.1f}s[/bold cyan] ({rate})\n"
-        f"[dim]\u2713 Scan complete[/dim]",
-        border_style="green",
-    ))
+    console.print(Panel.fit(body, border_style="green", padding=(1, 2)))
