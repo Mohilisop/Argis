@@ -24,12 +24,14 @@ console = Console()
 
 LOGO_SUB = "[cyan]⚡ SIGINT COLLECTOR[/cyan]"
 
+# Clean ANSI-shadow block wordmark for "ARGIS", one string per row.
 _ARGIS_ART = [
-    " # ## ## ### ## ",
-    "# # # # # # # ",
-    "### ## # # # # ",
-    "# # # # # # # # ",
-    "# # # # ## ### ## ",
+    " █████╗ ██████╗  ██████╗ ██╗███████╗",
+    "██╔══██╗██╔══██╗██╔════╝ ██║██╔════╝",
+    "███████║██████╔╝██║  ███╗██║███████╗",
+    "██╔══██║██╔══██╗██║   ██║██║╚════██║",
+    "██║  ██║██║  ██║╚██████╔╝██║███████║",
+    "╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝╚══════╝",
 ]
 
 _GRAD_START = (110, 231, 255)
@@ -255,7 +257,6 @@ def print_compact_results(results: dict[str, dict], username: str) -> None:
 
 
 def _status_bar(found: int, blocked: int, timed_out: int, unknown: int, other: int, width: int = 46) -> Text:
-    """A single proportional bar summarizing the scan outcome mix."""
     total = max(found + blocked + timed_out + unknown + other, 1)
     segments = [
         (found, "green"),
@@ -274,7 +275,6 @@ def _status_bar(found: int, blocked: int, timed_out: int, unknown: int, other: i
             cells = 1
         used += cells
         bar.append("█" * cells, style=color)
-    # trim/pad to width
     if used > width:
         bar.truncate(width)
     elif used < width:
