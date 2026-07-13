@@ -30,9 +30,9 @@ from argis.utils.wayback import check_wayback
 
 app = typer.Typer(
     rich_markup_mode="rich",
-    help="Argis: the all-seeing username scanner. Hunt down accounts across "
-    "dozens of platforms and track how a username's footprint changes over time.",
-    epilog="[dim]See full docs at [link=https://github.com/Mohilisop/argis]github.com/Mohilisop/argis[/link][/dim]",
+    help="Argis: SIGINT-grade digital footprint scanner. Map any username "
+    "across 500+ platforms with media enrichment, breach correlation, and real-time threat analysis.",
+    epilog="[dim]⚡ github.com/Mohilisop/argis — defensive OSINT only[/dim]",
 )
 
 
@@ -50,56 +50,57 @@ def main(
     if ctx.invoked_subcommand is None:
         from rich.text import Text
         logo = Text()
-        logo.append("  ___   _   _   _   ___   ___   \n")
-        logo.append(" / _ \\ /_\\ | |_| | / __| / _ \\  \n", style="cyan")
-        logo.append("| (_) |/ _ \\|  _  || (_ || (_) | \n", style="cyan")
-        logo.append(" \\___//_/ \\_\\_| |_| \\___| \\___/  \n", style="cyan")
-        logo.append("  the all-seeing OSINT scanner    \n", style="dim")
+        logo.append("  █████  ██████  ██████  ██ ███████ \n")
+        logo.append(" ██   ██ ██   ██ ██   ██ ██ ██      \n", style="cyan")
+        logo.append(" ███████ ██████  ██████  ██ ███████ \n", style="cyan")
+        logo.append(" ██   ██ ██   ██ ██   ██ ██      ██ \n", style="cyan")
+        logo.append(" ██   ██ ██   ██ ██   ██ ██ ███████ \n", style="cyan")
+        logo.append("  ⚡ SIGINT COLLECTOR • v0.7.0     \n", style="dim")
         console.print(logo)
         console.print("[bold]Usage:[/bold] [green]argis[/green] [cyan]<command>[/cyan] [dim][options][/dim]\n")
 
         from rich.table import Table
 
         groups = {
-                "Username Scanning": [
-                    ("scan <username>", "Search a username across 509 platforms"),
-                    ("scan-image <img>", "Extract usernames/URLs from a screenshot via OCR"),
-                    ("scan-face <img>", "Detect faces and reverse-search them for profiles"),
+                "🔍 SURVEILLANCE": [
+                    ("scan <username>", "Crawl 509 platforms for a target handle with media enrichment"),
+                    ("scan-image <img>", "OCR a screenshot to extract embedded usernames & URLs"),
+                    ("scan-face <img>", "Reverse-image search faces across the open web"),
                 ],
-                "Intelligence": [
-                    ("me <username>", "Full self-assessment: scan, breach, impersonation, geo, mentions"),
-                    ("breach <username>", "Check extracted emails against known data breaches (HIBP)"),
-                    ("mentions <username>", "Search for handle in pastes, code, and Google dorks"),
-                    ("locate <username>", "Infer probable geographic region from profile metadata"),
-                    ("doctor", "Health-check every site rule and flag rot"),
-                    ("link <username>", "Cluster accounts into real identities vs impersonators"),
-                    ("guard <username>", "Hunt lookalike handles impersonating you"),
+                "🧠 INTELLIGENCE": [
+                    ("me <username>", "Full profile: scan + breach + impersonation + geo + mentions"),
+                    ("breach <username>", "Correlate emails against 12B+ known breach records (HIBP)"),
+                    ("mentions <username>", "Dredge handles from paste sites, code repos & Google dorks"),
+                    ("locate <username>", "Geolocate via timezone/language metadata cross-referencing"),
+                    ("doctor", "Health-check all 509 site rules for decay or rot"),
+                    ("link <username>", "Cluster accounts into genuine identities vs impersonators"),
+                    ("guard <username>", "Proactive impersonation sweep — catch lookalike handles"),
                 ],
-                "Reconnaissance": [
-                    ("recon <host>", "Port scan, OS detection, traceroute, DNS, WHOIS, geo"),
-                    ("domain <domain>", "DNS resolution, WHOIS, port scan, geo"),
-                    ("discover <cidr>", "Sweep a subnet for live hosts"),
-                    ("myip", "Show your public IP and geolocate it"),
+                "🌐 RECONNAISSANCE": [
+                    ("recon <host>", "Port scan, OS fingerprint, traceroute, DNS, WHOIS, geo"),
+                    ("domain <domain>", "DNS resolution chain, WHOIS lookup, port scan, geo-IP"),
+                    ("discover <cidr>", "Subnet sweep for live hosts via ICMP/TCP probes"),
+                    ("myip", "Leak your public IP, ASN, and geolocation"),
                 ],
-                "History & Tracking": [
-                    ("history <user>", "View past scan timestamps"),
-                    ("clear-history <user>", "Delete scan history"),
-                    ("monitor <user>", "Continuously watch a username for changes"),
+                "⏳ TRACKING": [
+                    ("history <user>", "Review scan timestamps & diffs across sessions"),
+                    ("clear-history <user>", "Purge scan history for a target"),
+                    ("monitor <user>", "Continuous username surveillance with change alerts"),
                 ],
-                "Analysis": [
-                    ("compare <u1> <u2>", "Compare two usernames side-by-side"),
-                    ("exposure <username>", "Privacy risk score (0-100) + shrink plan"),
-                    ("timeline <username>", "Chronological timeline of account creation"),
-                    ("graph <username>", "Interactive pivot graph of accounts & references"),
-                    ("wayback <username>", "Check Wayback Machine history for a username"),
+                "📊 ANALYSIS": [
+                    ("compare <u1> <u2>", "Side-by-side platform overlap & divergence"),
+                    ("exposure <username>", "Risk score (0–100) + actionable footprint shrink plan"),
+                    ("timeline <username>", "Account creation chronology across platforms"),
+                    ("graph <username>", "Interactive pivot graph mapping accounts & correlations"),
+                    ("wayback <username>", "Historical profile snapshot via Archive.org"),
                 ],
-                "Utilities": [
-                    ("mcp", "Start Argis as an MCP server (callable by Claude, Cursor, etc.)"),
-                    ("categories", "List all available platform categories"),
-                    ("search", "Search across all scan history"),
-                    ("stats", "Aggregate statistics on scan results"),
-                    ("import-sites <source> <path>", "Import Sherlock/Maigret sites into Argis"),
-                    ("setup-celebrity-db", "Download celebrity face data for offline DeepFace matching"),
+                "⚙️ UTILITIES": [
+                    ("mcp", "Model Context Protocol server (Claude, Cursor, etc.)"),
+                    ("categories", "List all platform categories with counts"),
+                    ("search", "Full-text search across scan history database"),
+                    ("stats", "Aggregate scan statistics & platform hit rates"),
+                    ("import-sites <src> <path>", "Import Sherlock/Maigret site definitions"),
+                    ("setup-celebrity-db", "Download celebrity embeddings for offline facial recognition"),
                 ],
             }
 
@@ -114,20 +115,18 @@ def main(
             console.print()
 
         console.print("[dim]Flags:[/dim]")
-        console.print("  [cyan]--help[/cyan]    Show help for a specific command")
-        console.print("  [cyan]--version[/cyan] Show version number")
+        console.print("  [cyan]--help[/cyan]        Show detailed help for any command")
+        console.print("  [cyan]--version[/cyan]     Show build version")
         console.print()
-        console.print("[dim]Tip:[/dim] [green]argis recon --help[/green] for all recon options (-pt, -sv, -os, -tr, -ag, etc.)")
-        console.print()
-        console.print("[dim]Examples:[/dim]")
-        console.print("  [green]argis scan johndoe[/green]")
-        console.print("  [green]argis scan --file users.txt --export html[/green]")
+        console.print("[dim]Quick-start:[/dim]")
+        console.print("  [green]argis scan johndoe[/green]           # surface every account")
+        console.print("  [green]argis scan --file targets.txt --export html[/green]")
         console.print("  [green]argis recon -pt 22,80,443 -sv example.com[/green]")
-        console.print("  [green]argis recon -ag 192.168.1.0/24[/green]")
-        console.print("  [green]argis recon -ax -gl github.com[/green]")
-        console.print("  [green]argis recon -tr -os example.com[/green]")
-        console.print("  [green]argis compare alice bob[/green]")
-        console.print("  [green]argis myip[/green]")
+        console.print("  [green]argis recon -ag 192.168.1.0/24[/green]          # subnet sweep")
+        console.print("  [green]argis recon -ax -gl github.com[/green]           # full audit")
+        console.print("  [green]argis recon -tr -os example.com[/green]         # traceroute + OS")
+        console.print("  [green]argis me johndoe[/green]               # full self-assessment")
+        console.print("  [green]argis compare alice bob[/green]     # cross-username overlap")
         console.print()
         raise typer.Exit()
 

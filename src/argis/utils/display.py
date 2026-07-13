@@ -22,7 +22,7 @@ from rich.align import Align
 
 console = Console()
 
-LOGO_SUB = "[cyan]the all-seeing OSINT scanner[/cyan]"
+LOGO_SUB = "[cyan]⚡ SIGINT COLLECTOR[/cyan]"
 
 # Blocky ASCII wordmark for "ARGIS", one string per row.
 _ARGIS_ART = [
