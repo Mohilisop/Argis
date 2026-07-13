@@ -174,7 +174,7 @@ def write_media_review_dashboard(
 
 
 def register_media_review_command(app: typer.Typer) -> None:
-    @app.command("media-review", rich_help_panel="Analysis")
+    @app.command("media-review", rich_help_panel="ANALYSIS")
     def media_review_command(
         username: str = typer.Argument(..., help="Username whose latest saved scan should be reviewed."),
         output: Path = typer.Option(Path("."), "--output", "-o", help="HTML file or output directory."),

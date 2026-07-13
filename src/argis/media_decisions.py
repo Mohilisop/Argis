@@ -162,7 +162,7 @@ def apply_decisions_to_records(
 
 
 def register_media_decision_commands(app: typer.Typer) -> None:
-    @app.command("media-apply", rich_help_panel="Analysis")
+    @app.command("media-apply", rich_help_panel="ANALYSIS")
     def media_apply(
         review_json: Path = typer.Argument(..., exists=True, readable=True, help="JSON exported by the media-review dashboard."),
     ) -> None:
@@ -180,7 +180,7 @@ def register_media_decision_commands(app: typer.Typer) -> None:
         )
         console.print(f"[dim]Saved to {destination}. Regenerate the dossier to use these decisions.[/dim]")
 
-    @app.command("media-clear", rich_help_panel="Analysis")
+    @app.command("media-clear", rich_help_panel="ANALYSIS")
     def media_clear(
         username: str = typer.Argument(..., help="Target whose saved media decisions should be removed."),
     ) -> None:

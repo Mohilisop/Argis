@@ -28,9 +28,11 @@ _LOGO_GRADIENT = [
 
 _SECTIONS: list[tuple[str, str, list[tuple[str, str, str]]]] = [
     ("◉", "SURVEILLANCE", [
-        ("scan", "<username>", "Crawl 509 platforms for a handle, with media enrichment"),
+        ("scan", "<username>", "Crawl 509 platforms with media + dossier output"),
+        ("scan --dossier", "<path>", "Add --dossier <file.html> to generate the HTML report"),
         ("scan-image", "<img>", "OCR a screenshot for embedded usernames and URLs"),
         ("scan-face", "<img>", "Reverse-image search a face across the open web"),
+        ("setup-celebrity-db", "", "Download DeepFace celebrity reference images"),
     ]),
     ("◆", "INTELLIGENCE", [
         ("me", "<username>", "Full self-assessment: scan + breach + geo + impersonation"),
@@ -39,7 +41,6 @@ _SECTIONS: list[tuple[str, str, list[tuple[str, str, str]]]] = [
         ("locate", "<username>", "Infer region from timezone and language metadata"),
         ("link", "<username>", "Cluster accounts into real identities vs impersonators"),
         ("guard", "<username>", "Proactive sweep for lookalike impersonator handles"),
-        ("echo", "<username>", "Coordinated identity drift across saved scans"),
         ("doctor", "", "Health-check every site rule and flag rot"),
     ]),
     ("▲", "RECONNAISSANCE", [
@@ -59,6 +60,8 @@ _SECTIONS: list[tuple[str, str, list[tuple[str, str, str]]]] = [
         ("timeline", "<username>", "Account-creation chronology across platforms"),
         ("graph", "<username>", "Interactive pivot graph of accounts and links"),
         ("media-review", "<user>", "Interactive media confidence dashboard"),
+        ("media-apply", "<json>", "Save reviewed media decisions for future dossiers"),
+        ("media-clear", "", "Reset all media decisions to automatic mode"),
         ("wayback", "<username>", "Historical profile snapshots via Archive.org"),
     ]),
     ("⚙", "UTILITIES", [
@@ -66,6 +69,7 @@ _SECTIONS: list[tuple[str, str, list[tuple[str, str, str]]]] = [
         ("categories", "", "List all platform categories with counts"),
         ("search", "", "Full-text search across scan history"),
         ("stats", "", "Aggregate scan statistics and hit rates"),
+        ("web", "", "Launch the local Argis web UI (live streaming results)"),
         ("import-sites", "<src>", "Import Sherlock/Maigret site definitions"),
     ]),
 ]
@@ -138,7 +142,7 @@ def render_home(console: Console, version: str = "0.8.0") -> None:
     examples.add_row("argis scan johndoe --dossier report.html", "build the HTML dossier")
     examples.add_row("argis me johndoe", "full self-assessment")
     examples.add_row("argis recon -tr -os example.com", "traceroute + OS fingerprint")
-    examples.add_row("argis echo johndoe", "track identity drift")
+    examples.add_row("argis web", "launch the browser UI")
 
     console.print()
     console.print(Text("  examples", style="bold #94a3b8"))

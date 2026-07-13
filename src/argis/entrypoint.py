@@ -25,7 +25,7 @@ register_media_review_command(app)
 register_media_decision_commands(app)
 
 
-@app.command("echo", rich_help_panel="History & Tracking")
+@app.command("echo", rich_help_panel="TRACKING")
 def echo_command(
     username: str = typer.Argument(..., help="Username whose saved scan history should be analyzed."),
     window: int = typer.Option(72, "--window", "-w", min=1, help="Hours in which changes count as coordinated."),

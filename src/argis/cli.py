@@ -74,7 +74,7 @@ def _merge_config(cli_args: dict[str, Any]) -> dict[str, Any]:
 VALID_EXPORT_FORMATS = {"csv", "json", "markdown", "html", "md", "txt", "ndjson", "graphml", "neo4j"}
 
 
-@app.command(rich_help_panel="Username Scanning")
+@app.command(rich_help_panel="SURVEILLANCE")
 def scan(
     username: str = typer.Argument(..., help="The target username to hunt down."),
     file: Optional[Path] = typer.Option(
@@ -458,7 +458,7 @@ def scan(
         console.print("[dim]Desktop notification sent.[/dim]")
 
 
-@app.command(rich_help_panel="Username Scanning")
+@app.command(rich_help_panel="SURVEILLANCE")
 def scan_image(
     image: Path = typer.Argument(..., help="Path to a screenshot image to OCR."),
     scan: bool = typer.Option(
@@ -530,7 +530,7 @@ def scan_image(
                 print(f"  Scan failed: {exc}")
 
 
-@app.command(rich_help_panel="Username Scanning")
+@app.command(rich_help_panel="SURVEILLANCE")
 def scan_face(
     image: Path = typer.Argument(..., help="Path to an image to scan for faces."),
     identify: bool = typer.Option(
@@ -696,7 +696,7 @@ def scan_face(
                 webbrowser.open(engine_url)
 
 
-@app.command(rich_help_panel="Username Scanning")
+@app.command(rich_help_panel="UTILITIES")
 def web(
     host: str = typer.Option("127.0.0.1", "--host", help="Bind address."),
     port: int = typer.Option(8000, "--port", help="Listen port."),
@@ -1001,7 +1001,7 @@ TIMING_HELP = "Timing template 0-5: " + ", ".join(
 SCRIPT_CHOICES = ["web", "banners", "dns", "whois", "geo", "all"]
 
 
-@app.command(rich_help_panel="Reconnaissance")
+@app.command(rich_help_panel="RECONNAISSANCE")
 def recon(
     target: str = typer.Argument(..., help="Hostname or IP address to scan (not a URL or CIDR)."),
     # === Scan types ===
@@ -1505,7 +1505,7 @@ def _write_grepable_output(report, path: Path) -> None:
     path.write_text("\n".join(lines))
 
 
-@app.command(rich_help_panel="Reconnaissance")
+@app.command(rich_help_panel="RECONNAISSANCE")
 def discover(
     cidr: str = typer.Argument(..., help="Subnet to sweep, e.g. 192.168.1.0/24 (capped at 256 hosts)."),
     ports: Optional[str] = typer.Option(
@@ -1540,7 +1540,7 @@ def discover(
     display.print_discovery_results(cidr, results)
 
 
-@app.command(rich_help_panel="History & Tracking")
+@app.command(rich_help_panel="TRACKING")
 def history(
     username: str = typer.Argument(..., help="Username whose scan history to display."),
     limit: int = typer.Option(10, "--limit", help="Maximum number of past scans to show."),
@@ -1564,7 +1564,7 @@ def history(
     console.print(table)
 
 
-@app.command("clear-history", rich_help_panel="History & Tracking")
+@app.command("clear-history", rich_help_panel="TRACKING")
 def clear_history(
     username: str = typer.Argument(..., help="Username whose history should be deleted."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
@@ -1583,7 +1583,7 @@ def clear_history(
         console.print(f"[dim]No history existed for '{username}'.[/dim]")
 
 
-@app.command(rich_help_panel="History & Tracking")
+@app.command(rich_help_panel="TRACKING")
 def monitor(
     username: str = typer.Argument(..., help="Username to continuously watch."),
     interval: int = typer.Option(
@@ -1630,7 +1630,7 @@ def monitor(
         console.print("\n[dim]Monitor stopped.[/dim]")
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="ANALYSIS")
 def exposure(
     username: str = typer.Argument(..., help="Handle to assess for privacy exposure."),
     category: Optional[str] = typer.Option(
@@ -1735,7 +1735,7 @@ def exposure(
     console.print()
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="ANALYSIS")
 def timeline(
     username: str = typer.Argument(..., help="Handle to build a timeline for."),
     no_page_dates: bool = typer.Option(
@@ -1813,7 +1813,7 @@ def timeline(
     console.print()
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="ANALYSIS")
 def graph(
     username: str = typer.Argument(..., help="Seed handle to build a pivot graph from."),
     expand: bool = typer.Option(
@@ -1907,7 +1907,7 @@ def graph(
     )
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="UTILITIES")
 def search(
     query: str = typer.Argument(..., help="Search term to look for."),
     field: str = typer.Option(
@@ -1945,7 +1945,7 @@ def search(
     console.print(f"[dim]{len(matches)} total match(es), showing last {min(limit, len(matches))}[/dim]")
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="ANALYSIS")
 def media(
     targets: list[str] = typer.Argument(
         ..., help="One or more usernames or profile URLs to search."
@@ -1993,7 +1993,7 @@ def media(
     console.print(result)
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="UTILITIES")
 def stats(
     top: int = typer.Option(15, "--top", help="Number of top platforms to show."),
 ):
@@ -2021,7 +2021,7 @@ def stats(
         console.print(table)
 
 
-@app.command(rich_help_panel="Utilities")
+@app.command(rich_help_panel="UTILITIES")
 def mcp(
     transport: str = typer.Option("stdio", "--transport", help="'stdio' or 'sse'."),
     host: str = typer.Option("127.0.0.1", "--host"),
@@ -2044,7 +2044,7 @@ def mcp(
         asyncio.run(run_stdio())
 
 
-@app.command(rich_help_panel="Utilities")
+@app.command(rich_help_panel="UTILITIES")
 def categories():
     """List all available site categories."""
     cats = extract_categories()
@@ -2056,7 +2056,7 @@ def categories():
         console.print(f"  [cyan]{cat}[/cyan]")
 
 
-@app.command(name="import-sites", rich_help_panel="Utilities")
+@app.command(name="import-sites", rich_help_panel="UTILITIES")
 def import_sites(
     source: str = typer.Argument(..., help="Source DB: 'sherlock' or 'maigret'."),
     path: Path = typer.Argument(..., help="Path to the source data.json."),
@@ -2132,7 +2132,7 @@ def import_sites(
                       "before they ever reach a user.[/dim]")
 
 
-@app.command(rich_help_panel="Utilities")
+@app.command(rich_help_panel="INTELLIGENCE")
 def doctor(
     only: Optional[str] = typer.Option(
         None, "--only", help="Comma-separated platforms to health-check (default: all)."
@@ -2211,7 +2211,7 @@ def doctor(
         raise typer.Exit(code=1)
 
 
-@app.command(rich_help_panel="Intelligence")
+@app.command(rich_help_panel="INTELLIGENCE")
 def breach(
     username: str = typer.Argument(..., help="Handle to scan and check."),
     emails: Optional[str] = typer.Option(
@@ -2271,7 +2271,7 @@ def breach(
         console.print(f"\n[green]All {len(reports)} email(s) clean.[/green]")
 
 
-@app.command(rich_help_panel="Intelligence")
+@app.command(rich_help_panel="INTELLIGENCE")
 def mentions(
     username: str = typer.Argument(..., help="Handle to search for in pastes/code/leaks."),
 ):
@@ -2305,7 +2305,7 @@ def mentions(
             console.print(f"  [dim]\u2192[/dim] {d}")
 
 
-@app.command(rich_help_panel="Intelligence")
+@app.command(rich_help_panel="INTELLIGENCE")
 def locate(
     username: str = typer.Argument(..., help="Handle to geolocate from profile metadata."),
     category: Optional[str] = typer.Option(None, "--category", "-c"),
@@ -2346,7 +2346,7 @@ def locate(
     console.print("\n[dim]Based on public profile metadata only. Not GPS/IP tracking.[/dim]")
 
 
-@app.command(rich_help_panel="Intelligence")
+@app.command(rich_help_panel="INTELLIGENCE")
 def me(
     username: str = typer.Argument(..., help="YOUR handle. This is a self-assessment."),
     skip_impersonation: bool = typer.Option(
@@ -2442,7 +2442,7 @@ def me(
                   f"Re-run after fixes to see your score drop.[/dim]")
 
 
-@app.command(rich_help_panel="Utilities")
+@app.command(rich_help_panel="SURVEILLANCE")
 def setup_celebrity_db(
     force: bool = typer.Option(
         False, "--force", "-f", help="Redownload all celebrity images even if already cached."
@@ -2456,7 +2456,7 @@ def setup_celebrity_db(
     console.print("[dim]Now run [cyan]argis scan-face photo.jpg --identify --offline[/cyan] for offline matching.[/dim]")
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="ANALYSIS")
 def compare(
     username1: str = typer.Argument(..., help="First username to compare."),
     username2: str = typer.Argument(..., help="Second username to compare."),
@@ -2509,7 +2509,7 @@ def compare(
     )
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="INTELLIGENCE")
 def guard(
     username: str = typer.Argument(..., help="A handle YOU own, to defend."),
     reference: Optional[str] = typer.Option(
@@ -2621,7 +2621,7 @@ def guard(
     )
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="INTELLIGENCE")
 def link(
     username: str = typer.Argument(..., help="Handle to scan and correlate."),
     threshold: float = typer.Option(
@@ -2730,7 +2730,7 @@ def link(
     )
 
 
-@app.command(rich_help_panel="Analysis")
+@app.command(rich_help_panel="ANALYSIS")
 def wayback(
     username: str = typer.Argument(..., help="Username to check on Wayback Machine."),
     limit: int = typer.Option(20, "--limit", help="Max snapshots to show."),
@@ -2768,7 +2768,7 @@ def wayback(
     console.print(f"[dim]Showing {min(limit, result.total)} of {result.total} snapshots.[/dim]")
 
 
-@app.command(rich_help_panel="Reconnaissance")
+@app.command(rich_help_panel="RECONNAISSANCE")
 def domain(
     domain_name: str = typer.Argument(..., help="Domain name to investigate (e.g. example.com)."),
     timeout: float = typer.Option(3.0, "--timeout", help="Lookup timeout in seconds."),
@@ -2818,7 +2818,7 @@ def domain(
         display.print_port_results(ip, open_ports)
 
 
-@app.command(rich_help_panel="Reconnaissance")
+@app.command(rich_help_panel="RECONNAISSANCE")
 def myip(
     geo: bool = typer.Option(True, "--geo/--no-geo", help="Geolocate your public IP."),
     geo_key: Optional[str] = typer.Option(
