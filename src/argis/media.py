@@ -190,6 +190,67 @@ def extract_avatar_candidate_sources(page_html: str, page_url: str) -> list[tupl
     return pairs
 
 
+def _candidates_from_page(page_html: str, page_url: str) -> list[tuple[str, str]]:
+    return extract_avatar_candidate_sources(page_html, page_url)
+
+
+async def enrich_avatar(pe, *, html: str, fetcher) -> ProfileEvidence:
+    from argis.models import ProfileEvidence
+    candidates = _candidates_from_page(html, pe.url)
+    for img_url, source in candidates[:5]:
+        try:
+            resp = await fetcher.get(img_url, headers={"User-Agent": "Argis/1.0"})
+            if resp.error:
+                continue
+            ev = build_media_evidence(
+                image_url=resp.url or img_url,
+                image_bytes=resp.content,
+                platform=pe.platform,
+                profile_url=pe.url,
+                username=pe.username,
+                source=source,
+            )
+            if ev.url not in {m.url for m in pe.media}:
+                pe.media.append(ev)
+        except Exception:
+            continue
+    return pe
+
+
+async def search_url(client, url: str, *, username: str, platform: str, **kwargs) -> ProfileEvidence | None:
+    try:
+        resp = await client.get(url, follow_redirects=True)
+        if resp.error:
+            return None
+        pe = ProfileEvidence(
+            platform=platform, category="unknown", username=username,
+            url=url, status="FOUND",
+        )
+        return await enrich_avatar(pe, html=resp.text, fetcher=client)
+    except Exception:
+        return None
+
+
+async def search_profile(client, username: str, *, platforms: list[str] | None = None, **kwargs) -> dict[str, ProfileEvidence]:
+    return {}
+
+
+def collect_media(profiles: dict[str, ProfileEvidence]) -> list[MediaEvidence]:
+    all_media: list[MediaEvidence] = []
+    for pe in profiles.values():
+        all_media.extend(pe.media)
+    return all_media
+
+
+def rank_media_candidates(profiles: dict[str, ProfileEvidence]) -> list[dict]:
+    candidates = collect_media(profiles)
+    ranked = sorted(candidates, key=lambda m: m.confidence, reverse=True)
+    return [
+        {"url": m.url, "classification": m.classification, "confidence": m.confidence, "source": m.source}
+        for m in ranked
+    ]
+
+
 def build_media_evidence(
     *,
     image_url: str,
