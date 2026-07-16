@@ -63,19 +63,45 @@ nav:
   - Home: index.md
   - Installation: install.md
   - Getting Started: getting-started.md
-  - Commands:
+  - Surveillance:
     - scan: commands/scan.md
+    - scan-image: commands/scan-image.md
+    - scan-face: commands/scan-face.md
+    - setup-celebrity-db: commands/setup-celebrity-db.md
+  - Intelligence:
+    - me: commands/me.md
+    - breach: commands/breach.md
+    - mentions: commands/mentions.md
+    - locate: commands/locate.md
+    - link: commands/link.md
+    - guard: commands/guard.md
+    - doctor: commands/doctor.md
+  - Reconnaissance:
     - recon: commands/recon.md
+    - discover: commands/discover.md
     - domain: commands/domain.md
     - myip: commands/myip.md
-    - discover: commands/discover.md
+  - Tracking:
     - history: commands/history.md
+    - clear-history: commands/clear-history.md
     - monitor: commands/monitor.md
-    - search: commands/search.md
-    - stats: commands/stats.md
+    - echo: commands/echo.md
+  - Analysis:
+    - exposure: commands/exposure.md
+    - timeline: commands/timeline.md
+    - graph: commands/graph.md
     - compare: commands/compare.md
     - wayback: commands/wayback.md
+    - media-review: commands/media-review.md
+    - media-apply: commands/media-apply.md
+    - media-clear: commands/media-clear.md
+  - Utilities:
+    - web: commands/web.md
+    - mcp: commands/mcp.md
+    - search: commands/search.md
+    - stats: commands/stats.md
     - categories: commands/categories.md
+    - import-sites: commands/import-sites.md
   - Guides:
     - Configuration: guides/configuration.md
     - Output Formats: guides/output-formats.md
