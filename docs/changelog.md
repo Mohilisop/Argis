@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.9.0 — Engine Overhaul, Encoding Safety & Data Integrity
+
+### Engine Fixes (scanning accuracy)
+- :tada: **Fixed title detection bug** — title search window widened from 5,000 → 50,000 bytes. Many sites (GitHub, etc.) have their `<title>` tag beyond 5 KB, causing every valid account to return `NOT_FOUND`. This was the root cause of missing accounts.
+- :tada: **Confidence scoring** now uses 30,000 bytes of page content (was 8,000) for more accurate analysis
+- :tada: **Description extraction** widened from 5,000 → 50,000 bytes
+- :tada: **Non-encodable characters** are now stripped from titles and descriptions, preventing crashes on terminals that don't support emoji/exotic Unicode
+
+### Output / Encoding Safety
+- :tada: **Logo converted to pure ASCII** — the previous Unicode block-art (`█`) crashed on Windows cp1252 terminals before any scan could run
+- :tada: **Status bars** (`_status_bar`, `print_completion`) auto-detect whether the terminal supports the FULL BLOCK character and fall back to `#` if not
+- :tada: **Windows console** now enables Virtual Terminal Processing + UTF-8 mode, letting Rich use the modern rendering path instead of the legacy cp1252 codec path
+- Logo subtitle changed from `⚡ SIGINT COLLECTOR` to `> SIGINT COLLECTOR` (ASCII-safe)
+
+### Data Integrity
+- :tada: Removed duplicate "Throne" entry from sites.json (was listed twice under `content`)
+- :tada: Fixed hardcoded path in `import-sites` command — now resolves from package location instead of CWD
+- :tada: Updated all stale version strings (`0.8.0` → `0.9.0`) across docs, home screen, and package metadata
+- :tada: Updated mkdocs.yml description to reflect 500+ platforms (was "133+")
+- :tada: Expanded .gitignore with generated output patterns (`*.html`, `health*.md`, `dossier*.html`, etc.)
+
+### Cleanup
+- `media_runtime.py` stub restored after accidental removal
+- `test_profile_media_apis.py` removed (tested unimplemented functions from stub)
+- 60+ core tests passing, full suite verified
+
 ## 0.8.0 — Full Export Suite + AI Analysis
 
 - :tada: New export formats: TXT (`-T`), NDJSON (`-J ndjson`), XMind 8 (`-X`), GraphML (`-G`), Neo4j Cypher (`--neo4j`), PDF (`-P`)

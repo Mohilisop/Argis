@@ -20,19 +20,30 @@ from rich.style import Style
 from rich import box
 from rich.align import Align
 
-console = Console()
+try:
+    import sys as _sys
+    import ctypes as _ctypes
+    _k32 = _ctypes.windll.kernel32
+    _STD_OUTPUT_HANDLE = -11
+    _k32.SetConsoleMode(_k32.GetStdHandle(_STD_OUTPUT_HANDLE), 7)
+    _sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+console = Console(legacy_windows=False)
 
-LOGO_SUB = "[cyan]⚡ SIGINT COLLECTOR[/cyan]"
+LOGO_SUB = "[cyan]> SIGINT COLLECTOR[/cyan]"
 
 # Clean ANSI-shadow block wordmark for "ARGIS", one string per row.
 _ARGIS_ART = [
-    " █████╗ ██████╗  ██████╗ ██╗███████╗",
-    "██╔══██╗██╔══██╗██╔════╝ ██║██╔════╝",
-    "███████║██████╔╝██║  ███╗██║███████╗",
-    "██╔══██║██╔══██╗██║   ██║██║╚════██║",
-    "██║  ██║██║  ██║╚██████╔╝██║███████║",
-    "╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝╚══════╝",
+    "  ___   ___   ___  ___  _  _  ___  ",
+    " / _ \\ / __| / _ \\| _ \\| \\| |/ __| ",
+    "| (_) |\\__ \\|  _/|   /| .` |\\__ \\ ",
+    " \\___/ |___/|_|  |_|\\_\\|_|\\_\\|___/ ",
+    "                                    ",
+    " All-Seeing OSINT Scanner v0.9.0",
 ]
+
+_ASCII_SAFE = True
 
 _GRAD_START = (110, 231, 255)
 _GRAD_END = (58, 120, 235)
@@ -88,6 +99,14 @@ def _logo_panel(revealed: list[int] | None = None, shimmer_center: float | None 
     )
 
 
+def _block_char() -> str:
+    try:
+        chr(0x2588).encode(console.encoding or "utf-8")
+        return chr(0x2588)
+    except (UnicodeEncodeError, UnicodeTranslateError):
+        return "#"
+
+
 def _print_logo() -> None:
     console.print(_logo_panel())
 
@@ -129,6 +148,8 @@ STATUS_BADGES = {
     "UNKNOWN": "[yellow]?[/yellow]",
     "TIMEOUT": "[yellow]⏳[/yellow]",
     "BLOCKED": "[magenta]⊘[/magenta]",
+    "LOGIN_WALL": "[blue]⊘[/blue]",
+    "SKIPPED": "[dim]–[/dim]",
 }
 
 STATUS_STYLES = {
@@ -137,6 +158,8 @@ STATUS_STYLES = {
     "UNKNOWN": "yellow",
     "TIMEOUT": "yellow",
     "BLOCKED": "magenta",
+    "LOGIN_WALL": "blue",
+    "SKIPPED": "dim",
 }
 
 _STATUS_LABEL = {
@@ -145,6 +168,8 @@ _STATUS_LABEL = {
     "UNKNOWN": "unknown",
     "TIMEOUT": "timeout",
     "BLOCKED": "blocked",
+    "LOGIN_WALL": "login wall",
+    "SKIPPED": "skipped",
 }
 
 
@@ -267,6 +292,7 @@ def _status_bar(found: int, blocked: int, timed_out: int, unknown: int, other: i
     ]
     bar = Text()
     used = 0
+    block = _block_char()
     for count, color in segments:
         if count <= 0:
             continue
@@ -274,11 +300,11 @@ def _status_bar(found: int, blocked: int, timed_out: int, unknown: int, other: i
         if cells == 0:
             cells = 1
         used += cells
-        bar.append("█" * cells, style=color)
+        bar.append(block * cells, style=color)
     if used > width:
         bar.truncate(width)
     elif used < width:
-        bar.append("█" * (width - used), style="grey19")
+        bar.append(block * (width - used), style="grey19")
     return bar
 
 
@@ -725,9 +751,10 @@ def print_completion(elapsed: float, found: int, total: int) -> None:
     pct = (found / total * 100) if total else 0
     gauge_width = 24
     filled = round(gauge_width * found / total) if total else 0
+    block = _block_char()
     gauge = Text()
-    gauge.append("█" * filled, style="green")
-    gauge.append("█" * (gauge_width - filled), style="grey19")
+    gauge.append(block * filled, style="green")
+    gauge.append(block * (gauge_width - filled), style="grey19")
 
     body = Text()
     body.append(f"{found}", style="bold green")

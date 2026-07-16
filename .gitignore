@@ -11,3 +11,14 @@ venv/
 .env
 site/
 _mkdocs_site/
+*.html
+health*.md
+review*.html
+dossier*.html
+media-review*.json
+.opencode/
+*.rar
+*.zip
+report*.json
+report*.md
+mohilisop-report.json

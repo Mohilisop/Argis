@@ -187,8 +187,18 @@ def scan(
     graph_out: Optional[Path] = typer.Option(None, "-G", "--graph", help="Generate a graph report (GraphML)."),
     neo4j: Optional[Path] = typer.Option(None, "--neo4j", help="Generate Neo4j Cypher import script."),
     json_type: Optional[str] = typer.Option(None, "-J", "--json", help="JSON report type: simple, ndjson."),
+    render: bool = typer.Option(
+        False, "--render", help="Use a headless browser for JS-gated profiles (needs playwright)."
+    ),
     ai_flag: bool = typer.Option(False, "--ai", help="AI-powered analysis of results (needs OPENAI_API_KEY or ANTHROPIC_API_KEY)."),
     ai_model: str = typer.Option("gpt-4o", "--ai-model", help="Model for AI analysis."),
+    update_sites: bool = typer.Option(
+        False, "--update-sites", help="Fetch the latest platform rules from GitHub before scanning."
+    ),
+    recursive: bool = typer.Option(
+        False, "--recursive", "-r",
+        help="Scrape found profiles for links to other usernames and scan them too."
+    ),
 ):
     """Search for a target username across all configured platforms.
 
@@ -200,8 +210,14 @@ def scan(
       argis scan johndoe -T report.txt -X mindmap.xmind
       argis scan johndoe --ai
       argis scan johndoe --min-confidence 60
+      argis scan johndoe --update-sites
+      argis scan johndoe --recursive
     """
     init_config()
+
+    if update_sites:
+        from argis.core import update_sites_file
+        update_sites_file()
 
     if save_config:
         from argis.utils.config import save_config as sc
@@ -282,6 +298,7 @@ def scan(
         exclude=exclude_set,
         include=include_set,
         retry_blocked=retry,
+        render=render,
     )
 
     if list_platforms:
@@ -290,7 +307,10 @@ def scan(
 
     scan_start = time.time()
     try:
-        results = asyncio.run(engine.run_scan(quiet=quiet))
+        if recursive:
+            results = asyncio.run(engine.recursive_scan(max_depth=2, quiet=quiet))
+        else:
+            results = asyncio.run(engine.run_scan(quiet=quiet))
     except ArgisError as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise typer.Exit(code=1)
@@ -312,12 +332,20 @@ def scan(
         if not quiet:
             console.print(f"[dim]Confidence filter \u2265 {min_confidence}: {kept}/{total_found} hits shown[/dim]")
 
-    if not quiet:
+    if recursive:
+        _display_recursive_results(results, all, verbose, status_filter)
+    elif not quiet:
         _display_scan_results(results, username, all, verbose, emails, status_filter)
 
     if not quiet:
-        found_count = sum(1 for r in results.values() if r["status"] == "FOUND")
-        display.print_completion(scan_elapsed, found_count, len(results))
+        if recursive:
+            found_count = sum(1 for r in results.values() if r["status"] == "FOUND")
+            handles = set(r.get("_handle", username) for r in results.values())
+            console.print(f"[green]Found {found_count} hits across {len(handles)} handles[/green]")
+            console.print(f"[dim]Scanned in {scan_elapsed:.1f}s[/dim]")
+        else:
+            found_count = sum(1 for r in results.values() if r["status"] == "FOUND")
+            display.print_completion(scan_elapsed, found_count, len(results))
 
     if diff:
         previous = diffmod.get_last_scan(username)
@@ -389,7 +417,7 @@ def scan(
         dsr = asyncio.run(build_dossier(
             username, results, site_categories=cats,
             timeout=timeout or 7.0, concurrency=concurrency or 30,
-            proxy=proxy, use_tor=tor))
+            proxy=proxy, use_tor=tor, render=render))
         graph_payload = asyncio.run(build_dossier_graph(
             username, timeout=timeout or 7.0, concurrency=concurrency or 30,
             proxy=proxy, use_tor=tor))
@@ -757,6 +785,39 @@ def _display_scan_results(
         if email_map:
             console.print()
             display.print_email_results(email_map)
+
+
+def _display_recursive_results(
+    results: dict, show_all: bool, verbose: bool, status_filter: str | None
+) -> None:
+    filtered = results
+    if status_filter:
+        allowed = set(s.strip().upper() for s in status_filter.split(","))
+        filtered = {n: r for n, r in results.items() if r.get("status") in allowed}
+    if not filtered:
+        console.print("[dim]No results match the given --status filter.[/dim]")
+        return
+
+    by_handle: dict[str, dict] = {}
+    for uid, info in filtered.items():
+        h = info.get("_handle", "?")
+        by_handle.setdefault(h, {})[uid] = info
+
+    for handle, hits in by_handle.items():
+        found = [(uid, r) for uid, r in hits.items() if r.get("status") == "FOUND"]
+        if not found:
+            continue
+        src = hits.get(list(hits.keys())[0], {})
+        from_str = f" (from {src.get('_source_plat', 'seed')})" if src.get("_source_plat") else ""
+        console.print(f"\n[bold cyan]{handle}[/bold cyan]{from_str}")
+        for uid, r in found:
+            console.print(f"  [green]\u2713[/green] {uid.split('|', 1)[-1]}: {r.get('url', '')}")
+
+    if verbose:
+        errors = {n: r for n, r in results.items() if r.get("error")}
+        if errors:
+            console.print()
+            display.print_error_details(errors)
 
 
 def _handle_scan_export(
@@ -2061,7 +2122,7 @@ def import_sites(
     source: str = typer.Argument(..., help="Source DB: 'sherlock' or 'maigret'."),
     path: Path = typer.Argument(..., help="Path to the source data.json."),
     sites: Path = typer.Option(
-        Path("src/argis/sites.json"), "--sites", help="Argis sites.json to merge into."),
+        Path(__file__).resolve().parent / "sites.json", "--sites", help="Argis sites.json to merge into."),
     output: Optional[Path] = typer.Option(
         None, "-o", "--output", help="Where to write merged DB (default: overwrite --sites)."),
     overwrite_existing: bool = typer.Option(

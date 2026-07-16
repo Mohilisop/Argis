@@ -106,7 +106,7 @@ def _section_block(glyph: str, name: str, rows: list[tuple[str, str, str]]) -> G
     return Group(header, table, Text(""))
 
 
-def render_home(console: Console, version: str = "0.8.0") -> None:
+def render_home(console: Console, version: str = "0.9.0") -> None:
     """Render the ARGIS home screen for a bare `argis` invocation."""
     tagline = Text(justify="left")
     tagline.append("  the all-seeing OSINT collector", style="italic #6a7a8a")

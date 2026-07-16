@@ -330,12 +330,19 @@ def find_correlations(results: list[dict], identity: dict) -> list[dict]:
 #  HTML REPORT GENERATION
 # ═══════════════════════════════════════════════════════════════════
 
-def generate_dossier_html(results: list[dict], username: str) -> str:
+def generate_dossier_html(
+    results: list[dict],
+    username: str,
+    login_walled: list[dict] | None = None,
+    skipped: list[dict] | None = None,
+) -> str:
     """Generate the full dossier HTML report.
 
     Expects results as a list of normalized dicts with keys:
       p, cat, url, name, mail, bio, img, avatar_hash, links,
       status, confidence, verification, warnings
+
+    login_walled / skipped: simple dicts with p, url, cat keys.
     """
     # Phase the accounts by verification state
     verified = [r for r in results if r.get("verification") in ("VERIFIED", "PROBABLE")]
@@ -432,6 +439,32 @@ def generate_dossier_html(results: list[dict], username: str) -> str:
                 f'<span class="row-go warned" title="{esc(warnings_str)}">\u26a0</span>'
                 f"</a></div>\n"
             )
+
+    # Additional result list rows
+    def _other_rows(items: list[dict], badge_class: str, badge_label: str) -> str:
+        rows = ""
+        for r in items:
+            p = esc(r.get("p", ""))
+            url = esc(r.get("url", ""))
+            cat = esc(r.get("cat", "uncategorized"))
+            rows += (
+                f'<div class="row other-row" data-search="{p.lower()}">'
+                f'<a href="{url}" target="_blank" rel="noopener">'
+                f'<div class="pfp-ph">{p[0].upper() if p else "?"}</div>'
+                f'<div class="row-info">'
+                f'<div class="row-plat">{p}</div>'
+                f'<div class="row-meta">{url[:80]}</div>'
+                f'</div>'
+                f'<span class="badge {badge_class}">{badge_label}</span>'
+                f"</a></div>\n"
+            )
+        return rows
+
+    login_walled = login_walled or []
+    skipped = skipped or []
+
+    login_rows = _other_rows(login_walled, "login-wall", "LOGIN_WALL")
+    skip_rows = _other_rows(skipped, "skipped", "SKIPPED")
 
     # Verified accounts render in JS
     return f"""<!DOCTYPE html>
@@ -785,6 +818,14 @@ a {{ color: inherit; text-decoration: none; }}
 .empty {{ display: none; padding: 40px; text-align: center; border: 1px dashed var(--border); color: var(--text-muted); }}
 .empty.show {{ display: block; }}
 
+/* Other results (login-wall, skipped) */
+.other-section .sec-title {{ display: flex; align-items: center; gap: 10px; }}
+.other-list {{ display: flex; flex-direction: column; gap: 4px; }}
+.other-row a {{ grid-template-columns: 28px 1fr auto; }}
+.badge {{ font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em; text-transform: uppercase; }}
+.badge.login-wall {{ background: #1e3a5f; color: #7bb8f5; border: 1px solid #2a5a8f; }}
+.badge.skipped {{ background: #1a1a2a; color: #6a6a80; border: 1px solid #2a2a3a; }}
+
 /* Footer */
 .footer {{ padding: 32px 0 48px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-muted); }}
 .footer .ok {{ color: var(--green); }}
@@ -895,8 +936,18 @@ a {{ color: inherit; text-decoration: none; }}
   <div class="empty" id="empty">no matches found</div>
 </section>
 
+{f'''<section class="section other-section">
+  <div class="sec-title">Login-Walled Platforms <span class="cnt">{len(login_walled)}</span></div>
+  <div class="other-list">{login_rows}</div>
+</section>''' if login_walled else ''}
+
+{f'''<section class="section other-section">
+  <div class="sec-title">Skipped Platforms <span class="cnt">{len(skipped)}</span></div>
+  <div class="other-list">{skip_rows}</div>
+</section>''' if skipped else ''}
+
 <footer class="footer">
-  <span><span class="ok">\u2713</span> scan complete // {n_verified} verified / {n_ambiguous} review / public signals only</span>
+  <span><span class="ok">\u2713</span> scan complete // {n_verified} verified / {n_ambiguous} review{f' / {len(login_walled)} login-walled' if login_walled else ''}{f' / {len(skipped)} skipped' if skipped else ''}</span>
   <span>defensive OSINT // no deanonymization</span>
 </footer>
 
@@ -1148,7 +1199,7 @@ async def build_dossier(
                                         pe.display_name = result.display_name
                                     if result.bio and not pe.bio:
                                         pe.bio = result.bio
-                                return pe
+                                    return pe
                             except Exception:
                                 pass
                         resp = await fetcher.get(pe.url)
@@ -1218,9 +1269,19 @@ async def build_dossier(
         pe.warnings.extend(warnings)
         verified_profiles.append(pe)
 
+    # Collect non-FOUND results for display
+    login_walled: list[dict] = []
+    skipped: list[dict] = []
+    for plat, raw in results.items():
+        s = raw.get("status", "")
+        if s == "LOGIN_WALL":
+            login_walled.append({"p": plat, "url": raw.get("url", ""), "cat": site_categories.get(plat, "uncategorized")})
+        elif s == "SKIPPED":
+            skipped.append({"p": plat, "url": raw.get("url", ""), "cat": site_categories.get(plat, "uncategorized")})
+
     # Convert to dossier dicts and generate HTML
     dossier_dicts = profiles_to_dossier_dicts(verified_profiles)
-    html_str = generate_dossier_html(dossier_dicts, username)
+    html_str = generate_dossier_html(dossier_dicts, username, login_walled=login_walled, skipped=skipped)
 
     found: dict[str, dict] = {}
     for pe in verified_profiles:

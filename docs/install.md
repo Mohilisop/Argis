@@ -17,6 +17,13 @@ pip install argis
 pip install argis[dev]
 ```
 
+## Docker
+
+```bash
+docker pull ghcr.io/mohilisop/argis:latest
+docker run --rm ghcr.io/mohilisop/argis scan username
+```
+
 ## Verify
 
 ```bash
@@ -26,7 +33,7 @@ argis --version
 You should see:
 
 ```
-Argis v0.8.0
+Argis v0.9.0
 ```
 
 !!! tip "Updating"

@@ -34,6 +34,20 @@ class InstagramAdapter:
                 "platform": "Instagram", "code": "ACCOUNT_NOT_FOUND", "http_status": 404,
             })
         if resp.status in (429, 403):
+            from urllib.parse import urlencode
+            oembed_url = f"https://api.instagram.com/oembed?{urlencode({'url': profile_url})}"
+            try:
+                oembed_resp = await client.get(oembed_url, follow_redirects=True)
+                if oembed_resp.status == 200:
+                    data = oembed_resp.json()
+                    thumb = data.get("thumbnail_url")
+                    if thumb:
+                        return AdapterResult(found=True, profile_url=profile_url, media=[
+                            MediaEvidence(url=thumb, classification="PROFILE_AVATAR", confidence=80,
+                                          source="instagram.oembed_api", validated=True),
+                        ])
+            except Exception:
+                pass
             return AdapterResult(found=False, profile_url=profile_url, diagnostic={
                 "platform": "Instagram", "code": "BLOCKED", "http_status": resp.status,
                 "message": "Instagram blocked the public profile request",
