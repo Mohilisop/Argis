@@ -1,5 +1,5 @@
 site_name: Argis
-site_description: The all-seeing OSINT scanner — hunt down accounts across 500+ platforms
+site_description: The all-seeing OSINT scanner — hunt down accounts across 500+ platforms with 50-agent deep investigation
 site_url: https://mohilisop.github.io/argis
 repo_url: https://github.com/Mohilisop/argis
 repo_name: Mohilisop/argis
@@ -69,6 +69,7 @@ nav:
     - scan-face: commands/scan-face.md
     - setup-celebrity-db: commands/setup-celebrity-db.md
   - Intelligence:
+    - investigate: commands/investigate.md
     - me: commands/me.md
     - breach: commands/breach.md
     - mentions: commands/mentions.md

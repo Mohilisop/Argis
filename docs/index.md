@@ -1,8 +1,27 @@
+```
+ █████╗ ██████╗  ██████╗ ██╗███████╗
+██╔══██╗██╔══██╗██╔════╝ ██║██╔════╝
+███████║██████╔╝██║  ███╗██║███████╗
+██╔══██║██╔══██╗██║   ██║██║╚════██║
+██║  ██║██║  ██║╚██████╔╝██║███████║
+╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝╚══════╝
+
+  the all-seeing OSINT collector   ·   v0.9.0
+```
+
 # Argis
 
-**The all-seeing OSINT scanner.** Hunt down accounts across 509 platforms and track how a username's footprint changes over time.
+**The all-seeing OSINT scanner.** Hunt down accounts across 509 platforms, run 50-agent deep investigations, and track how a username's footprint changes over time.
 
 <div class="grid cards" markdown>
+
+-   :material-account-multiple: **Deep Investigation (50 Agents)**
+
+    ---
+
+    50 specialized AI agents across 5 squads perform deep OSINT investigation — identity, social, professional, deep web, and specialist analysis. Generates advanced HTML reports.
+
+    [:octicons-arrow-right-24: Investigate command](commands/investigate.md)
 
 -   :material-magnify-scan: **Username Scanning**
 
@@ -75,6 +94,7 @@ argis recon example.com -sv -os -df
 
 ## Features
 
+- :material-account-multiple: **50-Agent Investigation** — 5 squads (Alpha–Epsilon) perform deep OSINT with advanced HTML reports
 - :material-account-search: **509 Platforms** — social media, coding forums, gaming, creative, professional, and more
 - :material-lightning-bolt: **Async Engine** — concurrent checks with HTTP/2 support, retry with backoff
 - :material-web: **Nmap-style Recon** — port scan, service version detection, OS detection, UDP scan, traceroute
