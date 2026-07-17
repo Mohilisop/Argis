@@ -564,7 +564,7 @@ const logs = [
   "[COMPLETED] COGNITIVE INTERFACE LOADED."
 ];
 
-window.onload = function() {{
+function bootReport() {{
   initParticles();
   renderFindings(findings);
   let pct = 0, logIdx = 0;
@@ -591,7 +591,12 @@ window.onload = function() {{
     }}
     bar.style.width = pct + '%'; pctEl.textContent = Math.ceil(pct) + '%';
   }}, 70);
-}};
+}}
+if (document.readyState === 'loading') {{
+  document.addEventListener('DOMContentLoaded', bootReport);
+}} else {{
+  bootReport();
+}}
 
 function animateCounters() {{
   document.querySelectorAll('.stat-counter').forEach(el => {{
@@ -626,7 +631,7 @@ function renderFindings(list) {{
         <div><strong class="text-cyber-cyan uppercase tracking-wider block text-[11px] mb-1">Summary:</strong> ${{f.desc}}</div>
         <div class="border-t border-slate-800/80 pt-3"><strong class="text-cyber-pink uppercase tracking-wider block text-[11px] mb-1">Metadata:</strong> ${{f.details}}</div>
       </div>
-    </div>`; c.lastChild.querySelector('.flex-wrap').addEventListener('click', function(e) {{ this.querySelector('.fa-chevron-down').classList.toggle('rotate-180'); }});
+    </div>`;
   }});
 }}
 
@@ -655,7 +660,7 @@ function runCmd(cmd) {{
     if (cmd === 'help') {{ appendTerm('Commands: status, scan, breach, clear, help'); }}
     else if (cmd === 'status') {{ appendTerm('Target: @{target["username"]} | Findings: {total_findings} | Platforms: {total_found} | Grade: {grade_display}'); }}
     else if (cmd === 'scan') {{ appendTerm('Re-scanning 508 platforms...', 'text-cyber-accentGreen'); setTimeout(() => appendTerm('Complete: {total_found} profiles found.', 'text-cyber-accentGreen'), 800); }}
-    else if (cmd === 'breach') {{ appendTerm('Checking breach databases...', 'text-cyber-accentYellow'); setTimeout(() => appendTerm('{"All clear - no breaches" if breach_count==0 else str(breach_count)+" breach records found"}', 'text-cyber-accentGreen' if breach_count==0 else 'text-cyber-pink'), 1000); }}
+    else if (cmd === 'breach') {{ appendTerm('Checking breach databases...', 'text-cyber-accentYellow'); setTimeout(() => appendTerm('{"All clear - no breaches" if breach_count==0 else str(breach_count)+" breach records found"}', '{"text-cyber-accentGreen" if breach_count==0 else "text-cyber-pink"}'), 1000); }}
     else if (cmd === 'clear') {{ termOut.innerHTML = '<div>[CLEARED]</div>'; }}
     else {{ appendTerm('Unknown command: ' + cmd + '. Type help.', 'text-cyber-pink'); }}
   }}, 200);
