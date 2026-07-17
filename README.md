@@ -109,6 +109,7 @@ argis scan johndoe                        # surface every account
 argis scan johndoe --dossier report.html  # build the full HTML dossier
 argis scan johndoe -P report.pdf          # PDF report
 argis me johndoe                          # full self-assessment
+argis investigate johndoe --html report.html # run 50-agent deep investigation
 argis echo johndoe                        # track identity drift over time
 argis web                                 # launch the browser UI
 ```
@@ -153,6 +154,7 @@ Requires **Python 3.10+**. Supports Windows, Linux, and macOS.
 | 🎬 **Wayback Machine** | Historical snapshots of profiles |
 | 📁 **Multiple outputs** | JSON, CSV, HTML, Markdown, TXT, NDJSON, XMind, GraphML, Neo4j, PDF, webhooks (Slack / Discord) |
 | 🧠 **AI analysis** | LLM-powered risk assessment via OpenAI or Anthropic |
+| 🕵️ **Deep Investigation** | Orchestrates 50 specialized AI agents across 5 squads (Identity, Social, Professional, Deep Web, Specialists) |
 | 🤖 **OCR** | Extract usernames from screenshots, auto-scan found handles |
 | 📷 **Face detection** | Reverse-search via multiple engines (Google, TinEye, Bing, Yandex, SauceNAO, IQDB, ImgOps); offline DeepFace lookalike matching |
 | 🧹 **Self-healing** | Auto-verifies site rules and flags silent rot |
@@ -174,12 +176,21 @@ Every username scanner answers one question: *does this handle exist here?* Argi
 
 | Command | What it answers |
 |---|---|
+| `investigate` | Deep multi-agent investigation utilizing 50 specialized AI agents to analyze a target's footprint. |
 | `doctor` | Are my detection rules still correct, or have they silently rotted? |
 | `link` | Of everywhere this handle exists, which accounts are the same person — and which are impostors? |
 | `guard` | Is anyone impersonating me on a lookalike handle right now? |
 | `echo` | Did this identity rebrand, migrate avatars, or retreat across platforms together? |
 
-These four are built for **defensive / self-OSINT**: verifying your own data, disambiguating accounts that already share your public handle, and surfacing people impersonating *you* — see [Responsible Use](#responsible-use) for the intended scope.
+These tools are built for **defensive / self-OSINT**: verifying your own data, disambiguating accounts that already share your public handle, and surfacing people impersonating *you* — see [Responsible Use](#responsible-use) for the intended scope.
+
+### `investigate` — deep multi-agent intelligence
+
+Runs a comprehensive analysis on a target using **50 specialized AI agents** organized into 5 squads (Core Identity, Social Intel, Professional, Deep Web, and Specialists). Generates an advanced HTML dossier or Markdown report aggregating all AI agent findings.
+
+```bash
+argis investigate johndoe --html report.html
+```
 
 ### `doctor` — self-healing site database
 
@@ -261,6 +272,7 @@ Each image is classified as `PROFILE_AVATAR`, `PROFILE_BANNER`, `PLATFORM_LOGO`,
 
 | Command | Description |
 |---|---|
+| `investigate` | Deep multi-agent investigation across 50 specialized AI agents (5 squads) |
 | `me` | Unified self-assessment: scan + breach + mentions + geo + impersonation |
 | `breach` | Check emails for known breaches |
 | `mentions` | Search pastes, code, and dorks for a handle |
