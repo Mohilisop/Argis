@@ -35,6 +35,7 @@ _SECTIONS: list[tuple[str, str, list[tuple[str, str, str]]]] = [
         ("setup-celebrity-db", "", "Download DeepFace celebrity reference images"),
     ]),
     ("◆", "INTELLIGENCE", [
+        ("investigate", "<username>", "50-agent deep OSINT investigation with advanced reports"),
         ("me", "<username>", "Full self-assessment: scan + breach + geo + impersonation"),
         ("breach", "<username>", "Correlate emails against known breach records"),
         ("mentions", "<username>", "Dredge handles from pastes, code repos, and dorks"),
@@ -139,6 +140,7 @@ def render_home(console: Console, version: str = "0.9.0") -> None:
     examples.add_column(style="#4ade80", no_wrap=True)
     examples.add_column(style="#6a7a8a")
     examples.add_row("argis scan johndoe", "surface every account")
+    examples.add_row("argis investigate johndoe --html report.html", "50-agent deep investigation")
     examples.add_row("argis scan johndoe --dossier report.html", "build the HTML dossier")
     examples.add_row("argis me johndoe", "full self-assessment")
     examples.add_row("argis recon -tr -os example.com", "traceroute + OS fingerprint")
