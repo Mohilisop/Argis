@@ -6,17 +6,17 @@
 ██║  ██║██║  ██║╚██████╔╝██║███████║
 ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝╚══════╝
 
-  the all-seeing OSINT collector   ·   v0.9.0
+  the all-seeing OSINT collector   ·   v0.9.1
 ```
 
 # Argis
 
-[![PyPI version](https://img.shields.io/pypi/v/argis?color=ea7233)](https://pypi.org/project/argis/)
+[![PyPI version](https://img.shields.io/pypi/v/argis?color=ea7233&label=version)](https://pypi.org/project/argis/)
 [![Downloads](https://img.shields.io/pypi/dm/argis?color=blue)](https://pypi.org/project/argis/)
 [![Python versions](https://img.shields.io/badge/python-3.10%2B-blue)](https://pypi.org/project/argis/)
-[![License](https://img.shields.io/github/license/Mohilisop/argis)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-22%20suites-brightgreen)](#)
-[![GitHub stars](https://img.shields.io/github/stars/Mohilisop/argis?style=flat&color=gold)](https://github.com/Mohilisop/argis)
+[![License](https://img.shields.io/github/license/Mohilisop/Argis?color=green)](https://github.com/Mohilisop/Argis/blob/main/LICENSE)
+[![Tests](https://img.shields.io/github/actions/workflow/status/Mohilisop/Argis/ci.yml?label=tests)](https://github.com/Mohilisop/Argis/actions)
+[![GitHub stars](https://img.shields.io/github/stars/Mohilisop/Argis?style=flat&label=stars&color=gold)](https://github.com/Mohilisop/Argis)
 
 **The all-seeing OSINT scanner.** Map a username across 500+ platforms with media enrichment, identity correlation, breach checks, impersonation detection, and footprint drift tracking — in one async CLI.
 
