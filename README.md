@@ -13,10 +13,9 @@
 
 [![PyPI version](https://badge.fury.io/py/argis.svg)](https://pypi.org/project/argis/)
 [![Downloads](https://static.pepy.tech/badge/argis)](https://pepy.tech/project/argis)
-[![Python versions](https://img.shields.io/badge/python-3.10%2B-3670A0)](https://pypi.org/project/argis/)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/Mohilisop/Argis/blob/main/LICENSE)
 [![Tests](https://github.com/Mohilisop/Argis/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohilisop/Argis/actions)
-[![GitHub stars](https://img.shields.io/badge/dynamic/json?color=gold&label=stars&query=stargazers_count&url=https%3A%2F%2Fapi.github.com%2Frepos%2FMohilisop%2FArgis)](https://github.com/Mohilisop/Argis)
+
 
 **The all-seeing OSINT scanner.** Map a username across 500+ platforms with media enrichment, identity correlation, breach checks, impersonation detection, and footprint drift tracking — in one async CLI.
 
