@@ -41,4 +41,4 @@ pip install "argis[dev]"
 
 ## Report Issues
 
-Open an issue at [github.com/Mohilisop/argis/issues](https://github.com/Mohilisop/argis/issues).
+Open an issue at [github.com/Mohilisop/Argis/issues](https://github.com/Mohilisop/Argis/issues).

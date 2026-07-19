@@ -460,7 +460,7 @@ Argis is designed for **defensive / self-OSINT use**. If you discover a security
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Mohilisop/argis&type=Date)](https://star-history.com/#Mohilisop/argis&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Mohilisop/Argis&type=Date)](https://star-history.com/#Mohilisop/Argis&Date)
 
 ---
 

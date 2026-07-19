@@ -49,7 +49,7 @@ Argis runs on **Windows**, **Linux** (Arch, Kali, Ubuntu), and **macOS** — zer
 ## Development Install
 
 ```bash
-git clone https://github.com/Mohilisop/argis.git
+git clone https://github.com/Mohilisop/Argis.git
 cd argis
 python -m venv .venv
 .venv\Scripts\activate   # Windows

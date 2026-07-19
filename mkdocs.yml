@@ -1,8 +1,8 @@
 site_name: Argis
 site_description: The all-seeing OSINT scanner — hunt down accounts across 500+ platforms with 50-agent deep investigation
 site_url: https://mohilisop.github.io/argis
-repo_url: https://github.com/Mohilisop/argis
-repo_name: Mohilisop/argis
+repo_url: https://github.com/Mohilisop/Argis
+repo_name: Mohilisop/Argis
 edit_uri: edit/main/docs/
 
 theme:
@@ -36,7 +36,7 @@ theme:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/Mohilisop/argis
+      link: https://github.com/Mohilisop/Argis
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/argis/
 
