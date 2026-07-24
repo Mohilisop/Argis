@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import random
 import socket
+import time
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 import httpx
@@ -25,6 +28,58 @@ TOR_PROXY_URL = "socks5://127.0.0.1:9050"
 
 def random_user_agent() -> str:
     return random.choice(USER_AGENTS)
+
+
+class RateLimiter:
+    """Per-host adaptive rate limiter with sliding-window tracking."""
+
+    def __init__(self, default_rps: float = 5.0, max_rps: float = 20.0):
+        self._default_rps = default_rps
+        self._max_rps = max_rps
+        self._hosts: dict[str, list[float]] = defaultdict(list)
+        self._failures: dict[str, int] = defaultdict(int)
+        self._lock = asyncio.Lock()
+
+    def _host_key(self, url: str) -> str:
+        try:
+            from urllib.parse import urlparse
+            return urlparse(url).hostname or url
+        except Exception:
+            return url
+
+    async def acquire(self, url: str) -> None:
+        host = self._host_key(url)
+        async with self._lock:
+            now = time.monotonic()
+            window = 1.0
+            cutoff = now - window
+            # Slide window: keep only timestamps within the last second
+            self._hosts[host] = [t for t in self._hosts[host] if t > cutoff]
+            failures = self._failures.get(host, 0)
+            # Adaptive: back off RPS when failures accumulate
+            rps = max(self._default_rps - failures * 0.5, 1.0)
+            if len(self._hosts[host]) >= int(rps):
+                sleep_for = window / rps
+                self._hosts[host].clear()
+                await asyncio.sleep(sleep_for)
+            self._hosts[host].append(now)
+
+    def record_failure(self, url: str) -> None:
+        host = self._host_key(url)
+        self._failures[host] = min(self._failures[host] + 1, 10)
+
+    def record_success(self, url: str) -> None:
+        host = self._host_key(url)
+        if self._failures.get(host, 0) > 0:
+            self._failures[host] = max(self._failures[host] - 1, 0)
+
+    @property
+    def stats(self) -> dict:
+        return {
+            "hosts_tracked": len(self._hosts),
+            "active_limits": {h: len(ts) for h, ts in self._hosts.items() if len(ts) > 0},
+            "backed_off": {h: f for h, f in self._failures.items() if f > 0},
+        }
 
 
 def build_client(

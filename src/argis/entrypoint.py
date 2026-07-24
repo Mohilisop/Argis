@@ -114,6 +114,7 @@ def investigate_command(
     markdown: Optional[Path] = typer.Option(None, "--markdown", "-m", help="Write report as Markdown."),
     html: Optional[Path] = typer.Option(None, "--html", "-h", help="Write report as HTML (advanced report)."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show per-agent findings."),
+    resume: bool = typer.Option(False, "--resume", "-r", help="Resume from previous scan checkpoint (skips re-scanning)."),
 ) -> None:
     """Deep multi-agent investigation across 50 specialized AI agents (5 squads)."""
     import time
@@ -125,10 +126,14 @@ def investigate_command(
     orchestrator = InvestigationOrchestrator()
 
     console.print(f"[bold cyan]Argis Deep Investigation[/bold cyan]")
-    console.print(f"[dim]Target: @{username} | Agents: 50 | Squads: 5[/dim]\n")
+    console.print(f"[dim]Target: @{username} | Agents: 50 | Squads: 5[/dim]")
+
+    if resume:
+        console.print("[dim]Resume mode enabled — scan will be skipped if checkpoint exists[/dim]")
+    console.print()
 
     start = time.time()
-    ctx = orchestrator.investigate_sync(target)
+    ctx = orchestrator.investigate_sync(target, resume=resume)
     elapsed = time.time() - start
 
     report = orchestrator.generate_report(ctx)

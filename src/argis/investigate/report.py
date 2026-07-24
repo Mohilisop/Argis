@@ -243,6 +243,13 @@ class InvestigationReport:
         grade_display = exposure_grade
         exposure_val = exposure_score
 
+        radar_signal = {"high": "ELEVATED", "medium": "MODERATE", "low": "STABLE"}.get(risk_cls, "SCANNING")
+        scan_ratio = total_found / max(total_scanned, 1)
+        radar_angle = f"{scan_ratio * 360:.2f}°"
+        radar_pct = scores.get("profile_completeness", 0) or 0
+        signal_color = {"high": "#ef4444", "medium": "#f59e0b", "low": "#22d3ee"}.get(risk_cls, "#22d3ee")
+        radar_pulse = "animate-ping" if risk_cls == "high" else ""
+
         return f'''<!doctype html>
 <html lang="en" class="dark">
 <head>
@@ -451,14 +458,13 @@ body {{ overflow-x:hidden; font-size:15px; line-height:1.65; letter-spacing:0.01
         <circle cx="50" cy="50" r="12" fill="none" stroke="#22d3ee" stroke-opacity="0.25" stroke-width="0.5"/>
         <line x1="50" y1="8" x2="50" y2="92" stroke="#22d3ee" stroke-opacity="0.2" stroke-width="0.5" stroke-dasharray="1 1"/>
         <line x1="8" y1="50" x2="92" y2="50" stroke="#22d3ee" stroke-opacity="0.2" stroke-width="0.5" stroke-dasharray="1 1"/>
-        <polygon points="50,18 78,42 68,78 32,72 22,38" fill="rgba(236,72,153,0.22)" stroke="#ec4899" stroke-width="1.5" class="animate-pulse"/>
+        <polygon points="50,8 78,42 68,78 32,72 22,38" fill="rgba(236,72,153,0.22)" stroke="#ec4899" stroke-width="1.5" class="animate-pulse"/>
         <line x1="50" y1="50" x2="50" y2="8" stroke="#00f0ff" stroke-width="1" class="radar-beam"/>
-        <circle cx="78" cy="42" r="1.5" fill="#ec4899" /><circle cx="32" cy="72" r="1.5" fill="#22d3ee" />
       </svg>
     </div>
     <div class="mt-4 space-y-2 text-xs font-mono text-slate-400 border-t border-slate-800/80 pt-4">
-      <div class="flex justify-between items-center"><span class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-cyber-pink rounded-full animate-ping"></span>SIGNAL: STABLE</span><span class="text-cyber-cyan">SCAN RADIAN: 312.45°</span></div>
-      <div class="w-full bg-cyber-gray/40 h-1.5 rounded-full overflow-hidden"><div class="h-full bg-cyber-cyan animate-pulse" style="width:86%"></div></div>
+      <div class="flex justify-between items-center"><span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full" style="background:{signal_color};{('animation: ping 1s cubic-bezier(0,0,0.2,1) infinite' if risk_cls == 'high' else '')}"></span>SIGNAL: {radar_signal}</span><span class="text-cyber-cyan">SCAN RADIAN: {radar_angle}</span></div>
+      <div class="w-full bg-cyber-gray/40 h-1.5 rounded-full overflow-hidden"><div class="h-full" style="width:{radar_pct}%;background:linear-gradient(90deg,{signal_color},#22d3ee)"></div></div>
     </div>
   </div>
 </div>

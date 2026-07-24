@@ -12,7 +12,7 @@ import httpx
 from argis.exceptions import SiteConfigError
 from argis.utils.display import console, make_progress, print_found
 from argis.utils.extract_utils import clean_emails, visible_html
-from argis.utils.network import build_client, random_user_agent
+from argis.utils.network import RateLimiter, build_client, random_user_agent
 from argis.browser import BrowserChecker, playwright_available
 
 _STRIP_NON_ENCODABLE = re.compile(r"[^\x20-\x7E\xA0-\xFF\u0100-\u024F\u0300-\u03FF\u2000-\u206F\u2100-\u214F\u2150-\u218F\u2200-\u22FF\u2500-\u257F]+")
@@ -173,6 +173,7 @@ class ArgisEngine:
         self._browser: BrowserChecker | None = None
         self.sites = self._load_sites(sites_path)
         self._semaphore = asyncio.Semaphore(concurrency)
+        self.rate_limiter = RateLimiter()
 
     def _load_sites(self, sites_path: pathlib.Path | None) -> dict:
         if sites_path:
@@ -277,6 +278,7 @@ class ArgisEngine:
         ok = await self._ensure_browser()
         if not ok:
             return {"status": "UNKNOWN", "url": target_url, "error": "BROWSER_UNAVAILABLE"}
+        await self.rate_limiter.acquire(target_url)
         async with self._semaphore:
             result = await self._browser.check(target_url, timeout=self.timeout, username=self.username)
         if result["error"]:
@@ -313,11 +315,13 @@ class ArgisEngine:
         if "headers" in rules:
             headers.update(rules["headers"])
 
+        await self.rate_limiter.acquire(target_url)
         async with self._semaphore:
             try:
                 response = await client.get(target_url, headers=headers)
             except httpx.TimeoutException as exc:
                 err_type = _categorize_error(exc)
+                self.rate_limiter.record_failure(target_url)
                 return {"status": "TIMEOUT", "url": target_url, "error": err_type}
             except httpx.RequestError as exc:
                 err_type = _categorize_error(exc)
@@ -330,10 +334,14 @@ class ArgisEngine:
                         return await self.check_platform(
                             client, name, rules, attempt=attempt + 1
                         )
+                self.rate_limiter.record_failure(target_url)
                 return {"status": "UNKNOWN", "url": target_url, "error": err_type}
             except Exception as exc:
                 err_type = _categorize_error(exc)
+                self.rate_limiter.record_failure(target_url)
                 return {"status": "UNKNOWN", "url": target_url, "error": err_type}
+
+        self.rate_limiter.record_success(target_url)
 
         if response.status_code in (403, 429, 503, 999):
             if self.retry_blocked and attempt < self.retry_max_attempts:
