@@ -56,6 +56,7 @@ class InvestigationReport:
                 },
                 "findings": [f.to_dict() for f in sorted(findings, key=lambda x: -x.confidence)],
                 "dork_findings": self.ctx.shared_data.get("dork_findings", []),
+                "correlation_findings": self.ctx.shared_data.get("correlation_findings", []),
                 "errors": self.ctx.errors,
                 "intel": {
                     "real_names": real_names,
@@ -91,6 +92,7 @@ class InvestigationReport:
         errors = d.get("errors", [])
         meta = d.get("metadata", {})
         dork_findings = d.get("dork_findings", [])
+        correlation_findings = d.get("correlation_findings", [])
 
         cat_counts = scan.get("platforms_by_category", {})
         total_found = scan.get("platforms_found", 0)
@@ -154,6 +156,13 @@ class InvestigationReport:
                 for f in dork_findings[:10]
             )
             intel_html += f'<div class="intel-section"><h3><i class="fa-solid fa-link"></i> Surface Exposure</h3><ul class="text-[11px] font-mono text-slate-300 space-y-2">{dork_items}</ul></div>'
+
+        if correlation_findings:
+            corr_items = "".join(
+                f'<li class="flex items-start gap-2"><i class="fa-solid fa-link-slash text-cyber-pink mt-1"></i><span>{f.get("title", "?")[:80]} <span class="text-slate-500">({f.get("platform", "")}) confidence {int(f.get("confidence", 0) * 100)}%</span></span></li>'
+                for f in correlation_findings[:10]
+            )
+            intel_html += f'<div class="intel-section"><h3><i class="fa-solid fa-link-slash"></i> Cross-Username Correlation</h3><ul class="text-[11px] font-mono text-slate-300 space-y-2">{corr_items}</ul></div>'
 
         if intel.get("real_names"):
             tags = "".join(tag(n) for n in intel["real_names"][:8])

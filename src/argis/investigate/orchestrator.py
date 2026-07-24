@@ -13,6 +13,7 @@ from argis.investigate.report import InvestigationReport
 from argis.core import ArgisEngine, build_email_map
 from argis.normalize import normalize_scan_results
 from argis.utils.extract_utils import clean_emails
+from argis.correlation import CrossUsernameCorrelator
 from argis.dorker import Dorker
 from argis.utils.network import build_client
 from argis.geo_infer import infer_geo
@@ -117,6 +118,25 @@ class InvestigationOrchestrator:
         findings = dorker.to_findings(dork_results, target_username)
         ctx.shared_data["dork_findings"] = findings
 
+    async def _run_correlation(self, target: InvestigationTarget, ctx: AgentContext) -> None:
+        try:
+            correlator = CrossUsernameCorrelator()
+            results = ctx.shared_data.get("scan_results", {})
+            descriptions = ctx.shared_data.get("profile_descriptions", [])
+            titles = ctx.shared_data.get("profile_titles", [])
+            correlation_findings = correlator.correlate(
+                target.username,
+                target.aliases,
+                target.known_emails,
+                results,
+                descriptions,
+                titles,
+            )
+            if correlation_findings:
+                ctx.shared_data["correlation_findings"] = correlation_findings
+        except Exception:
+            return
+
     async def investigate(self, target: InvestigationTarget, *, resume: bool = False) -> AgentContext:
         async with build_client(timeout=self.timeout, http2=True) as client:
             ctx = AgentContext(target=target, client=client)
@@ -145,17 +165,19 @@ class InvestigationOrchestrator:
                 for squad_name, squad in self.squads.items():
                     tg.create_task(self._run_squad(squad_name, squad, ctx))
                 tg.create_task(self._run_dorker(target.username, target.known_emails, ctx))
+                tg.create_task(self._run_correlation(target, ctx))
             elapsed = time.time() - start
 
             self._clear_checkpoint(target.username)
 
             findings = ctx.get_findings()
             dork = ctx.shared_data.get("dork_findings", [])
+            correlation = ctx.shared_data.get("correlation_findings", [])
             ctx.shared_data["investigation_metadata"] = {
                 "duration_seconds": round(elapsed, 2),
                 "scan_duration": 0,
                 "squads_executed": list(self.squads.keys()),
-                "total_agents": 50 + len(dork),
+                "total_agents": 50 + len(dork) + len(correlation),
                 "total_findings": len(findings),
             }
             return ctx
