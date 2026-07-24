@@ -166,14 +166,18 @@ class Agent036_CloudStorageDiscovery(BaseAgent):
         ]
         accessible = []
         for url in candidates:
-            code, _, _ = await self._fetch(ctx, url, timeout=5.0)
+            cached = ctx.cached_fetch(url)
+            if cached:
+                code = cached.status
+            else:
+                code, _, _ = await self._fetch(ctx, url, timeout=5.0)
             if code and code < 500:
                 accessible.append(f"{url} (HTTP {code})")
 
         if accessible:
             self._emit(ctx, f"Found {len(accessible)} accessible cloud storage endpoints",
-                       "Cloud storage buckets may expose public data",
-                       0.6, evidence=accessible)
+                        "Cloud storage buckets may expose public data",
+                        0.6, evidence=accessible)
         else:
             self._emit(ctx, f"Checked {len(candidates)} cloud storage locations",
                        "No publicly accessible cloud storage found via URL enumeration.",

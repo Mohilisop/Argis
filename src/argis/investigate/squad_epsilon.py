@@ -15,6 +15,7 @@ class Agent041_CryptocurrencyTracer(BaseAgent):
 
     async def _run(self, ctx: AgentContext) -> None:
         results = ctx.shared_data.get("scan_results", {})
+        all_findings = ctx.get_findings()
         found = ctx.shared_data.get("found_platforms", [])
         all_text = ""
         for p in found:
@@ -29,15 +30,25 @@ class Agent041_CryptocurrencyTracer(BaseAgent):
         for m in eth_pattern.findall(all_text):
             wallets.append(f"ETH: {m}")
 
+        for f in all_findings:
+            if f.category.value == "deep_web" and f.evidence:
+                for url in f.evidence:
+                    code, text, _ = await self._fetch(ctx, url, timeout=8.0)
+                    if code == 200 and text:
+                        for m in btc_pattern.findall(text):
+                            wallets.append(f"BTC: {m}")
+                        for m in eth_pattern.findall(text):
+                            wallets.append(f"ETH: {m}")
+
         ctx.shared_data["crypto_wallets"] = wallets
         if wallets:
             self._emit(ctx, f"Found {len(wallets)} cryptocurrency wallet addresses",
-                       "Wallet addresses detected in profile data",
-                       0.6, evidence=wallets)
+                        "Wallet addresses detected in profile data and enriched via dork sources",
+                        0.6, evidence=wallets)
         else:
             self._emit(ctx, "Cryptocurrency tracing",
-                       "No wallet addresses found in public profile data. Requires blockchain explorer queries.",
-                       0.1)
+                        "No wallet addresses found in public profile data. Requires blockchain explorer queries.",
+                        0.1)
 
 
 class Agent042_GeolocationDeepDive(BaseAgent):

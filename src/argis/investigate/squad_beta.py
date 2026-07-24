@@ -52,12 +52,25 @@ class Agent012_ContentAnalyzer(BaseAgent):
                 if kw in combined:
                     interests.add(category)
 
+        dork = ctx.shared_data.get("dork_findings", [])
+        if dork:
+            for dk in dork[:5]:
+                for url in dk.get("evidence", []):
+                    if url and url not in found:
+                        status, text, _ = await self._fetch(ctx, url, timeout=8.0)
+                        if status == 200 and text:
+                            text_lower = text.lower()
+                            for kw, category in interest_keywords.items():
+                                if kw in text_lower:
+                                    interests.add(category)
+
         interest_list = sorted(interests)
         ctx.shared_data["detected_interests"] = interest_list
         if interest_list:
+            conf = 0.6 + (0.05 if dork else 0)
             self._emit(ctx, f"Interests detected: {', '.join(interest_list[:8])}",
-                       f"Derived from {len(found)} platform profiles",
-                       0.6, evidence=[f"Interest area: {i}" for i in interest_list])
+                        f"Derived from {len(found)} platform profiles (+ dork signals)" if dork else f"Derived from {len(found)} platform profiles",
+                        min(conf, 0.85), evidence=[f"Interest area: {i}" for i in interest_list])
         else:
             uname = ctx.target.username.lower()
             for kw, category in interest_keywords.items():
@@ -66,8 +79,8 @@ class Agent012_ContentAnalyzer(BaseAgent):
             interest_list = sorted(interests)
             if interest_list:
                 self._emit(ctx, f"Interests inferred from username: {', '.join(interest_list)}",
-                           f"Based on username keyword analysis: {len(interest_list)} areas",
-                           0.3, evidence=[f"Interest: {i}" for i in interest_list])
+                            f"Based on username keyword analysis: {len(interest_list)} areas",
+                            0.3, evidence=[f"Interest: {i}" for i in interest_list])
             else:
                 self._emit(ctx, "Content analysis", "Insufficient content for interest detection", 0.1)
 

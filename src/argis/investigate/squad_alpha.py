@@ -3,8 +3,10 @@
 import asyncio
 import re
 from argis.investigate.base import BaseAgent, AgentContext, FindingCategory
-from argis.utils.extract_utils import clean_display_name
+from argis.utils.extract_utils import clean_display_name, clean_emails, visible_html
 from argis.geo_infer import infer_geo
+
+_EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 
 
 class Agent001_IdentityAggregator(BaseAgent):
@@ -17,13 +19,20 @@ class Agent001_IdentityAggregator(BaseAgent):
         results = ctx.shared_data.get("scan_results", {})
         found_plats = ctx.shared_data.get("found_platforms", [])
         clean = ctx.shared_data.get("discovered_emails", [])
+        dork = ctx.shared_data.get("dork_findings", [])
+        correlation = ctx.shared_data.get("correlation_findings", [])
 
         evidence = [f"Found on {p}: {results.get(p, {}).get('url', '')}" for p in found_plats[:15]]
+        if dork:
+            evidence.append(f"Dork coverage: {len(dork)} surface exposure signals")
+        if correlation:
+            evidence.append(f"Correlation: {len(correlation)} cross-username matches")
         total = ctx.shared_data.get("scan_total_count", 0)
+        conf = min(0.95, 0.3 + len(found_plats) * 0.01 + (0.05 if dork else 0) + (0.05 if correlation else 0))
         self._emit(ctx, f"Identity profile: {len(found_plats)} platforms found",
                    f"Scanned {total} platforms, found {len(found_plats)} accounts, "
                    f"{len(clean)} emails discovered",
-                   min(0.95, 0.3 + len(found_plats) * 0.01),
+                   conf,
                    evidence=evidence, urls=[results.get(p, {}).get("url", "") for p in found_plats[:10]])
 
 
@@ -35,6 +44,8 @@ class Agent002_UsernameCrossReferencer(BaseAgent):
     async def _run(self, ctx: AgentContext) -> None:
         found = ctx.shared_data.get("found_platforms", [])
         results = ctx.shared_data.get("scan_results", {})
+        dork = ctx.shared_data.get("dork_findings", [])
+        correlation = ctx.shared_data.get("correlation_findings", [])
         if not found:
             self._emit(ctx, "Username cross-reference", "No platforms scanned yet", 0.1)
             return
@@ -47,10 +58,18 @@ class Agent002_UsernameCrossReferencer(BaseAgent):
         ctx.shared_data["platforms_by_category"] = by_category
         total_cats = len(by_category)
         evidence = [f"{cat}: {len(plats)} platforms" for cat, plats in sorted(by_category.items())]
+
+        conf = min(0.95, 0.4 + len(found) * 0.003)
+        if correlation:
+            evidence.append(f"Correlation found: {len(correlation)} cross-username matches")
+            conf = min(conf + 0.05, 0.95)
+        if dork:
+            evidence.append(f"Dork coverage: {len(dork)} surface exposure signals")
+            conf = min(conf + 0.03, 0.95)
+
         self._emit(ctx, f"Username active on {len(found)} platforms across {total_cats} categories",
-                   f"Categories: {', '.join(sorted(by_category.keys()))}",
-                   min(0.95, 0.4 + len(found) * 0.003),
-                   evidence=evidence)
+                    f"Categories: {', '.join(sorted(by_category.keys()))}",
+                    conf, evidence=evidence)
 
 
 class Agent003_NameResolver(BaseAgent):
@@ -100,6 +119,15 @@ class Agent004_EmailDiscovery(BaseAgent):
         known = ctx.target.known_emails
         all_emails = set(known) | set(discovered)
 
+        dork = ctx.shared_data.get("dork_findings", [])
+        dork_urls = []
+        for dk in dork:
+            for url in dk.get("evidence", []):
+                if url and url not in dork_urls:
+                    dork_urls.append(url)
+            if len(dork_urls) >= 5:
+                break
+
         for d in ["gmail.com", "outlook.com", "protonmail.com", "yahoo.com", "icloud.com"]:
             candidate = f"{ctx.target.username}@{d}"
             all_emails.add(candidate)
@@ -108,16 +136,28 @@ class Agent004_EmailDiscovery(BaseAgent):
             for d in ["gmail.com", "protonmail.com"]:
                 all_emails.add(f"{alias}@{d}")
 
+        if dork_urls:
+            for url in dork_urls[:10]:
+                status, text, _ = await self._fetch(ctx, url, timeout=8.0)
+                if status == 200 and text:
+                    from argis.utils.extract_utils import clean_emails as _clean
+                    found = _clean(_EMAIL_RE.findall(text))
+                    for e in found:
+                        all_emails.add(e)
+
         ctx.shared_data["all_email_candidates"] = list(all_emails)
         real = discovered or []
+        conf = 0.85
+        if dork_urls:
+            conf = min(conf + 0.05, 0.95)
         if real:
             self._emit(ctx, f"{len(real)} emails discovered from platform scans",
-                       f"Emails: {', '.join(real[:5])}{'...' if len(real) > 5 else ''}",
-                       0.85, evidence=[f"Email: {e}" for e in real])
+                        f"Emails: {', '.join(real[:5])}{'...' if len(real) > 5 else ''}",
+                        conf, evidence=[f"Email: {e}" for e in real])
         else:
             self._emit(ctx, f"Generated {len(all_emails)} email candidates",
-                       f"Based on username + aliases across common domains",
-                       0.35, evidence=[f"Candidate: {e}" for e in list(all_emails)[:8]])
+                        f"Based on username + aliases across common domains",
+                        0.35, evidence=[f"Candidate: {e}" for e in list(all_emails)[:8]])
 
 
 class Agent005_PhoneMapper(BaseAgent):
