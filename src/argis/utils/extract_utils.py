@@ -27,7 +27,7 @@ _EMAIL_BLOCK_LOCAL = (
     "freetieredpricing23", "monthly-marketing", "multicoupon-marketing",
     "yearly-marketing",
 )
-_EMAIL_JUNK_RE = re.compile(r"\.(?:jpg|jpeg|png|gif|webp|svg|css|js|woff2?)\b", re.I)
+_EMAIL_JUNK_RE = re.compile(r"\.(?:jpg|jpeg|png|gif|webp|svg|css|js|woff2?|avif|ico|bmp|tiff?|heic|heif|raw|psd|ai|eps)\b", re.I)
 _HEXish_RE = re.compile(r"^[0-9a-f]{12,}$", re.I)
 
 
