@@ -55,6 +55,7 @@ class InvestigationReport:
                     "by_squad": self._findings_by_squad(findings),
                 },
                 "findings": [f.to_dict() for f in sorted(findings, key=lambda x: -x.confidence)],
+                "dork_findings": self.ctx.shared_data.get("dork_findings", []),
                 "errors": self.ctx.errors,
                 "intel": {
                     "real_names": real_names,
@@ -89,6 +90,7 @@ class InvestigationReport:
         domains = d["domains"]
         errors = d.get("errors", [])
         meta = d.get("metadata", {})
+        dork_findings = d.get("dork_findings", [])
 
         cat_counts = scan.get("platforms_by_category", {})
         total_found = scan.get("platforms_found", 0)
@@ -146,6 +148,13 @@ class InvestigationReport:
             return f'<span class="intel-tag {cls}">{str(text)[:50]}</span>'
 
         intel_html = ""
+        if dork_findings:
+            dork_items = "".join(
+                f'<li class="flex items-start gap-2"><i class="fa-solid fa-link text-cyber-cyan mt-1"></i><span><a href="{f.get("evidence", [""])[0]}" target="_blank" class="text-cyber-cyan underline">{f.get("title", "?")[:60]}</a> <span class="text-slate-500">({f.get("platform", "deep_web")})</span></span></li>'
+                for f in dork_findings[:10]
+            )
+            intel_html += f'<div class="intel-section"><h3><i class="fa-solid fa-link"></i> Surface Exposure</h3><ul class="text-[11px] font-mono text-slate-300 space-y-2">{dork_items}</ul></div>'
+
         if intel.get("real_names"):
             tags = "".join(tag(n) for n in intel["real_names"][:8])
             intel_html += f'<div class="intel-section"><h3><i class="fa-solid fa-fingerprint"></i> Extracted Names / Aliases</h3><div class="flex flex-wrap gap-2 pt-1">{tags}</div></div>'
@@ -506,7 +515,7 @@ body {{ overflow-x:hidden; font-size:15px; line-height:1.65; letter-spacing:0.01
   <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-slate-800 pb-5 mb-6 gap-4">
     <div>
       <h2 class="text-base font-mono text-cyber-cyan tracking-wider font-extrabold uppercase flex items-center gap-2.5"><i class="fa-solid fa-box-open"></i> Findings Repository</h2>
-      <p class="text-xs text-slate-400 font-mono mt-1">TOTAL INCIDENTS: {total_findings} | 50 AGENTS PROCESSED</p>
+       <p class="text-xs text-slate-400 font-mono mt-1">TOTAL INCIDENTS: {total_findings} | {meta.get("total_agents", 50)} AGENTS PROCESSED</p>
     </div>
     <div class="flex flex-wrap items-center gap-3.5 w-full xl:w-auto">
       <div class="relative flex-1 md:w-64">
