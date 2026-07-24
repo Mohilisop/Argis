@@ -159,3 +159,5 @@ def render_home(console: Console, version: str = "0.9.0") -> None:
     console.print()
     console.print(footer)
     console.print()
+    console.print(Text("  built by mohilisop", style="italic #3a4452"))
+    console.print()

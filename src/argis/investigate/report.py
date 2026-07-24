@@ -551,6 +551,7 @@ body {{ overflow-x:hidden; font-size:15px; line-height:1.65; letter-spacing:0.01
     <div>ARGIS DEEP INVESTIGATION SYSTEM v1.0</div>
     <div>TARGET: @{target["username"]} | AGENTS: 50 | SQUADS: 5</div>
     <div>STATUS: ONLINE. Type 'help' for commands.</div>
+    <div>built by mohilisop</div>
   </div>
   <div class="flex flex-wrap gap-2.5 mb-4">
     <button onclick="runCmd('status')" class="px-3 py-1.5 bg-slate-900 hover:bg-cyber-pink/10 border border-cyber-pink/25 rounded-lg text-[10px] font-mono text-slate-300 font-bold uppercase transition-all duration-200">Status</button>

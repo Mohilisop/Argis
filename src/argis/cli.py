@@ -32,7 +32,7 @@ app = typer.Typer(
     rich_markup_mode="rich",
     help="Argis: SIGINT-grade digital footprint scanner. Map any username "
     "across 500+ platforms with media enrichment, breach correlation, and real-time threat analysis.",
-    epilog="[dim]⚡ github.com/Mohilisop/argis — defensive OSINT only[/dim]",
+    epilog="[dim]⚡ github.com/Mohilisop/argis — built by mohilisop — defensive OSINT only[/dim]",
 )
 
 

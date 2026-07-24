@@ -118,7 +118,7 @@ footer{margin-top:32px;text-align:center;color:var(--dim);font-size:11px;padding
 <div id=resultBody></div>
 </div>
 </div>
-<footer>argis v0.6 &middot; open source on github &middot; all scanning runs locally</footer>
+<footer>argis v0.6 &middot; open source on github &middot; all scanning runs locally &middot; built by mohilisop</footer>
 <script>
 const CAT_COLORS={coding:'#22c55e',social:'#38bdf8',creative:'#ec4899',gaming:'#eab308',professional:'#a855f7',blogging:'#f97316',security:'#ef4444',lifestyle:'#14b8a6',learning:'#06b6d4',finance:'#10b981',funding:'#f59e0b',media:'#8b5cf6',messaging:'#22d3ee',docs:'#64748b',startup:'#ec4899',identity:'#6b7280',uncategorized:'#64748b'}
 let allResults=null,activeFilter=null,resultsVisible=false
