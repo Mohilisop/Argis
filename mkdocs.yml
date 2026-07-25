@@ -111,7 +111,9 @@ nav:
     - Output Formats: guides/output-formats.md
     - Webhooks & Notifications: guides/webhooks.md
     - Troubleshooting: guides/troubleshooting.md
-  - About:
-    - Buy Me a Coffee: buy-me-a-coffee.md
-    - Changelog: changelog.md
-    - License: license.md
+   - About:
+     - Buy Me a Coffee: buy-me-a-coffee.md
+     - Changelog: changelog.md
+     - License: license.md
+   - Features:
+     - Email & Leak Check: features/email-and-leak-check.md
