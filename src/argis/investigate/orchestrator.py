@@ -15,6 +15,8 @@ from argis.normalize import normalize_scan_results
 from argis.utils.extract_utils import clean_emails
 from argis.correlation import CrossUsernameCorrelator
 from argis.dorker import Dorker
+from argis.email_gen import EmailPatternGenerator
+from argis.password_check import PasswordLeakChecker
 from argis.utils.network import build_client
 from argis.geo_infer import infer_geo
 
@@ -118,6 +120,48 @@ class InvestigationOrchestrator:
         findings = dorker.to_findings(dork_results, target_username)
         ctx.shared_data["dork_findings"] = findings
 
+    async def _run_email_gen(self, ctx: AgentContext) -> None:
+        try:
+            gen = EmailPatternGenerator()
+            candidates = gen.generate(
+                username=ctx.target.username,
+                aliases=ctx.target.aliases,
+                known_emails=ctx.target.known_emails,
+                known_domains=ctx.target.known_domains,
+                discovered_emails=ctx.shared_data.get("discovered_emails", []),
+                real_names=ctx.shared_data.get("real_names", []),
+            )
+            breach_reports = ctx.shared_data.get("all_breach_checks", []) or ctx.shared_data.get("breach_reports", [])
+            if breach_reports:
+                candidates = gen.enrich_with_breach_data(candidates, breach_reports)
+            candidates = gen.enrich_with_platforms(candidates, ctx.shared_data.get("found_platforms", []))
+            findings = gen.to_findings(candidates, ctx.target.username)
+            ctx.shared_data["email_gen_findings"] = findings
+            ctx.shared_data["email_candidates"] = candidates[:50]
+            for f in findings:
+                pass
+        except Exception:
+            return
+
+    async def _run_password_check(self, ctx: AgentContext) -> None:
+        try:
+            checker = PasswordLeakChecker()
+            breach_reports = ctx.shared_data.get("all_breach_checks", []) or ctx.shared_data.get("breach_reports", [])
+            analysis = checker.analyze(
+                username=ctx.target.username,
+                aliases=ctx.target.aliases,
+                known_emails=ctx.target.known_emails,
+                breach_reports=breach_reports,
+                discovered_emails=ctx.shared_data.get("discovered_emails", []),
+            )
+            findings = checker.to_findings(analysis, ctx.target.username)
+            ctx.shared_data["password_check_findings"] = findings
+            ctx.shared_data["password_analysis"] = analysis
+            for f in findings:
+                pass
+        except Exception:
+            return
+
     async def _run_correlation(self, target: InvestigationTarget, ctx: AgentContext) -> None:
         try:
             correlator = CrossUsernameCorrelator()
@@ -137,7 +181,8 @@ class InvestigationOrchestrator:
         except Exception:
             return
 
-    async def investigate(self, target: InvestigationTarget, *, resume: bool = False) -> AgentContext:
+    async def investigate(self, target: InvestigationTarget, *, resume: bool = False,
+                          generate_emails: bool = False, check_passwords: bool = False) -> AgentContext:
         async with build_client(timeout=self.timeout, http2=True) as client:
             ctx = AgentContext(target=target, client=client)
 
@@ -166,18 +211,25 @@ class InvestigationOrchestrator:
                     tg.create_task(self._run_squad(squad_name, squad, ctx))
                 tg.create_task(self._run_dorker(target.username, target.known_emails, ctx))
                 tg.create_task(self._run_correlation(target, ctx))
+                if generate_emails:
+                    tg.create_task(self._run_email_gen(ctx))
             elapsed = time.time() - start
+
+            if check_passwords:
+                await self._run_password_check(ctx)
 
             self._clear_checkpoint(target.username)
 
             findings = ctx.get_findings()
             dork = ctx.shared_data.get("dork_findings", [])
             correlation = ctx.shared_data.get("correlation_findings", [])
+            email_gen = ctx.shared_data.get("email_gen_findings", [])
+            password_check = ctx.shared_data.get("password_check_findings", [])
             ctx.shared_data["investigation_metadata"] = {
                 "duration_seconds": round(elapsed, 2),
                 "scan_duration": 0,
                 "squads_executed": list(self.squads.keys()),
-                "total_agents": 50 + len(dork) + len(correlation),
+                "total_agents": 50 + len(dork) + len(correlation) + len(email_gen) + len(password_check),
                 "total_findings": len(findings),
             }
             return ctx
@@ -197,8 +249,9 @@ class InvestigationOrchestrator:
     def generate_report(self, ctx: AgentContext) -> InvestigationReport:
         return InvestigationReport(ctx)
 
-    def investigate_sync(self, target: InvestigationTarget, *, resume: bool = False) -> AgentContext:
-        return asyncio.run(self.investigate(target, resume=resume))
+    def investigate_sync(self, target: InvestigationTarget, *, resume: bool = False,
+                         generate_emails: bool = False, check_passwords: bool = False) -> AgentContext:
+        return asyncio.run(self.investigate(target, resume=resume, generate_emails=generate_emails, check_passwords=check_passwords))
 
 
 from argis.utils.display import console

@@ -30,6 +30,7 @@ class InvestigationReport:
         wayback = self.ctx.shared_data.get("wayback_data", None)
         linguistic = self.ctx.shared_data.get("linguistic_profile", {})
         traits = self.ctx.shared_data.get("personality_traits", [])
+        email_candidates = self.ctx.shared_data.get("email_candidates", [])
 
         return {
             "report": {
@@ -57,6 +58,10 @@ class InvestigationReport:
                 "findings": [f.to_dict() for f in sorted(findings, key=lambda x: -x.confidence)],
                 "dork_findings": self.ctx.shared_data.get("dork_findings", []),
                 "correlation_findings": self.ctx.shared_data.get("correlation_findings", []),
+                "email_gen_findings": self.ctx.shared_data.get("email_gen_findings", []),
+                "password_check_findings": self.ctx.shared_data.get("password_check_findings", []),
+                "password_analysis": self.ctx.shared_data.get("password_analysis", {}),
+                "email_candidates": email_candidates,
                 "errors": self.ctx.errors,
                 "intel": {
                     "real_names": real_names,
@@ -93,6 +98,9 @@ class InvestigationReport:
         meta = d.get("metadata", {})
         dork_findings = d.get("dork_findings", [])
         correlation_findings = d.get("correlation_findings", [])
+        email_gen_findings = d.get("email_gen_findings", [])
+        password_check_findings = d.get("password_check_findings", [])
+        password_analysis = d.get("password_analysis", {})
 
         cat_counts = scan.get("platforms_by_category", {})
         total_found = scan.get("platforms_found", 0)
@@ -163,6 +171,32 @@ class InvestigationReport:
                 for f in correlation_findings[:10]
             )
             intel_html += f'<div class="intel-section"><h3><i class="fa-solid fa-link-slash"></i> Cross-Username Correlation</h3><ul class="text-[11px] font-mono text-slate-300 space-y-2">{corr_items}</ul></div>'
+
+        if email_gen_findings:
+            email_items = "".join(
+                f'<li class="flex items-start gap-2"><i class="fa-solid fa-envelope text-cyber-accentGreen mt-1"></i><span>{f.get("title", "?")[:80]} <span class="text-slate-500">confidence {int(f.get("confidence", 0) * 100)}%</span></span></li>'
+                for f in email_gen_findings[:5]
+            )
+            email_candidates = d.get("email_candidates", [])
+            if email_candidates:
+                top_emails = "".join(
+                    f'<span class="intel-tag">{c["email"]}</span>' for c in email_candidates[:8]
+                )
+                email_items += f'<div class="flex flex-wrap gap-2 pt-2">{top_emails}</div>'
+            intel_html += f'<div class="intel-section"><h3><i class="fa-solid fa-envelope"></i> Email Pattern Candidates</h3><ul class="text-[11px] font-mono text-slate-300 space-y-2">{email_items}</ul></div>'
+
+        if password_check_findings:
+            pw_items = "".join(
+                f'<li class="flex items-start gap-2"><i class="fa-solid fa-shield-halved text-cyber-pink mt-1"></i><span>{f.get("title", "?")[:80]} <span class="text-slate-500">confidence {int(f.get("confidence", 0) * 100)}%</span></span></li>'
+                for f in password_check_findings[:5]
+            )
+            risk = password_analysis.get("risk_assessment", {})
+            if risk:
+                score = risk.get("overall_score", 0)
+                grade = risk.get("grade", "N/A")
+                cls = "text-cyber-accentRed" if score >= 70 else "text-cyber-accentYellow" if score >= 40 else "text-cyber-accentGreen"
+                pw_items += f'<div class="pt-2 font-bold text-xs"><span class="{cls}">Grade: {grade} ({score}/100)</span></div>'
+            intel_html += f'<div class="intel-section"><h3><i class="fa-solid fa-shield-halved"></i> Password Leak Analysis</h3><ul class="text-[11px] font-mono text-slate-300 space-y-2">{pw_items}</ul></div>'
 
         if intel.get("real_names"):
             tags = "".join(tag(n) for n in intel["real_names"][:8])
@@ -265,8 +299,50 @@ class InvestigationReport:
         scan_ratio = total_found / max(total_scanned, 1)
         radar_angle = f"{scan_ratio * 360:.2f}°"
         radar_pct = scores.get("profile_completeness", 0) or 0
+        pw_risk = password_analysis.get("risk_assessment", {})
+        if pw_risk and pw_risk.get("overall_score", 0) >= 70:
+            risk_cls = "high"
+        elif pw_risk and pw_risk.get("overall_score", 0) >= 40:
+            if risk_cls != "high":
+                risk_cls = "medium"
+        radar_signal = {"high": "ELEVATED", "medium": "MODERATE", "low": "STABLE"}.get(risk_cls, "SCANNING")
         signal_color = {"high": "#ef4444", "medium": "#f59e0b", "low": "#22d3ee"}.get(risk_cls, "#22d3ee")
         radar_pulse = "animate-ping" if risk_cls == "high" else ""
+
+        _COORDS = {
+            "India": (20.5937, 78.9629), "USA": (37.0902, -95.7129), "United States": (37.0902, -95.7129),
+            "UK": (55.3781, -3.4360), "United Kingdom": (55.3781, -3.4360), "Germany": (51.1657, 10.4515),
+            "France": (46.6034, 1.8883), "Japan": (36.2048, 138.2529), "Canada": (56.1304, -106.3468),
+            "Australia": (-25.2744, 133.7751), "Brazil": (-14.2350, -51.9253), "Russia": (61.5240, 105.3188),
+            "China": (35.8617, 104.1954), "South Korea": (35.9078, 127.7669), "Italy": (41.8719, 12.5674),
+            "Spain": (40.4637, -3.7492), "Netherlands": (52.1326, 5.2913), "Sweden": (60.1282, 18.6435),
+            "Norway": (60.4720, 8.4689), "Denmark": (56.2639, 9.5018), "Finland": (61.9241, 25.7482),
+            "Poland": (51.9194, 19.1451), "Ukraine": (48.3794, 31.1656), "Turkey": (38.9637, 35.2433),
+            "Thailand": (15.8700, 100.9925), "Vietnam": (14.0583, 108.2772), "Indonesia": (-0.7893, 113.9213),
+            "Philippines": (12.8797, 121.7740), "Malaysia": (4.2105, 101.9758), "Singapore": (1.3521, 103.8198),
+            "Mexico": (23.6345, -102.5528), "Argentina": (-38.4161, -63.6167), "Chile": (-35.6751, -71.5430),
+            "Colombia": (4.5709, -74.2973), "South Africa": (-30.5595, 22.9375), "Nigeria": (9.0820, 8.6753),
+            "Egypt": (26.8206, 30.8025), "Kenya": (-0.0236, 37.9062), "UAE": (23.4241, 53.8478),
+            "Saudi Arabia": (23.8859, 45.0792), "Israel": (31.0461, 34.8516), "Portugal": (39.3999, -8.2245),
+            "Switzerland": (46.8182, 8.2275), "Austria": (47.5162, 14.5501), "Belgium": (50.8503, 4.3517),
+            "Ireland": (53.4129, -8.2439), "New Zealand": (-40.9006, 174.8860), "Pakistan": (30.3753, 69.3451),
+            "Bangladesh": (23.6850, 90.3563), "Middle East / North Africa": (26.0, 40.0),
+            "Europe": (50.0, 10.0), "Russia / Eastern Europe": (55.0, 40.0),
+            "Germany / DACH": (50.0, 10.0), "Japan / Thailand": (20.0, 105.0),
+            "Japan / China": (35.0, 115.0), "USA / UK": (50.0, -10.0),
+        }
+        geo_list = intel.get("geo_signals", [])
+        best_geo = max(geo_list, key=lambda g: g.get("confidence", 0)) if geo_list else None
+        if best_geo:
+            geo_country = best_geo.get("country", "Unknown")
+            geo_conf = int(best_geo.get("confidence", 0) * 100)
+            geo_evidence = best_geo.get("evidence", "")
+            geo_lat, geo_lon = _COORDS.get(geo_country, (20.0, 20.0))
+        else:
+            geo_country = "Uncertain"
+            geo_conf = 0
+            geo_evidence = ""
+            geo_lat, geo_lon = (20.0, 0.0)
 
         return f'''<!doctype html>
 <html lang="en" class="dark">
@@ -278,6 +354,8 @@ class InvestigationReport:
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {{
@@ -321,6 +399,10 @@ body {{ overflow-x:hidden; font-size:15px; line-height:1.65; letter-spacing:0.01
 .intel-section {{ margin-bottom:16px }}
 .intel-section h3 {{ font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:8px;display:flex;align-items:center;gap:6px }}
 .neon-border-cyan {{ box-shadow:0 0 10px rgba(0,240,255,0.15) }}
+@keyframes pulse {{ 0%{{opacity:1;transform:scale(1)}}50%{{opacity:0.7;transform:scale(1.15)}}100%{{opacity:1;transform:scale(1)}} }}
+.leaflet-popup-content-wrapper {{ background:#0d1122 !important;color:#e2e8f0 !important;border:1px solid rgba(0,240,255,0.3) !important;border-radius:12px !important }}
+.leaflet-popup-tip {{ background:#0d1122 !important;border:1px solid rgba(0,240,255,0.3) !important }}
+.leaflet-container {{ background:#050711 !important }}
 </style>
 </head>
 <body class="bg-cyber-bg text-slate-200 min-h-screen relative font-sans overflow-x-hidden">
@@ -467,21 +549,21 @@ body {{ overflow-x:hidden; font-size:15px; line-height:1.65; letter-spacing:0.01
     </div>
   </div>
   <div class="lg:col-span-1 border border-cyber-pink/15 rounded-2xl p-6 bg-cyber-surface/60 backdrop-blur-md shadow-xl">
-    <h2 class="text-sm font-mono text-cyber-pink mb-5 flex items-center gap-2.5 tracking-wider font-bold uppercase"><i class="fa-solid fa-satellite-dish text-base"></i> Active Risk Radar</h2>
-    <div class="flex justify-center items-center relative py-2">
-      <svg class="w-52 h-52 border border-cyber-cyan/10 rounded-full bg-[#070b16]/60 shadow-inner" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="42" fill="none" stroke="#22d3ee" stroke-opacity="0.1" stroke-width="0.5"/>
-        <circle cx="50" cy="50" r="32" fill="none" stroke="#22d3ee" stroke-opacity="0.15" stroke-width="0.5"/>
-        <circle cx="50" cy="50" r="22" fill="none" stroke="#22d3ee" stroke-opacity="0.2" stroke-width="0.5"/>
-        <circle cx="50" cy="50" r="12" fill="none" stroke="#22d3ee" stroke-opacity="0.25" stroke-width="0.5"/>
-        <line x1="50" y1="8" x2="50" y2="92" stroke="#22d3ee" stroke-opacity="0.2" stroke-width="0.5" stroke-dasharray="1 1"/>
-        <line x1="8" y1="50" x2="92" y2="50" stroke="#22d3ee" stroke-opacity="0.2" stroke-width="0.5" stroke-dasharray="1 1"/>
-        <polygon points="50,8 78,42 68,78 32,72 22,38" fill="rgba(236,72,153,0.22)" stroke="#ec4899" stroke-width="1.5" class="animate-pulse"/>
-        <line x1="50" y1="50" x2="50" y2="8" stroke="#00f0ff" stroke-width="1" class="radar-beam"/>
-      </svg>
-    </div>
-    <div class="mt-4 space-y-2 text-xs font-mono text-slate-400 border-t border-slate-800/80 pt-4">
-      <div class="flex justify-between items-center"><span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full" style="background:{signal_color};{('animation: ping 1s cubic-bezier(0,0,0.2,1) infinite' if risk_cls == 'high' else '')}"></span>SIGNAL: {radar_signal}</span><span class="text-cyber-cyan">SCAN RADIAN: {radar_angle}</span></div>
+    <h2 class="text-sm font-mono text-cyber-pink mb-3 flex items-center gap-2.5 tracking-wider font-bold uppercase"><i class="fa-solid fa-globe text-base"></i> Geolocation Map</h2>
+    <div id="geolocationMap" class="w-full h-48 rounded-lg border border-cyber-cyan/20 bg-[#070b16]"></div>
+    <div class="mt-3 space-y-2 text-xs font-mono border-t border-slate-800/80 pt-3">
+      <div class="flex justify-between items-center">
+        <span class="flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyber-accentGreen animate-pulse"></span>
+          {geo_country}
+        </span>
+        <span class="text-cyber-cyan">{geo_conf}% confidence</span>
+      </div>
+      <div class="text-slate-500 text-[10px] truncate">{geo_evidence[:80]}</div>
+      <div class="flex justify-between items-center pt-1">
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full" style="background:{signal_color}"></span>SIGNAL: {radar_signal}</span>
+        <span class="text-cyber-cyan">RISK: {radar_pct}%</span>
+      </div>
       <div class="w-full bg-cyber-gray/40 h-1.5 rounded-full overflow-hidden"><div class="h-full" style="width:{radar_pct}%;background:linear-gradient(90deg,{signal_color},#22d3ee)"></div></div>
     </div>
   </div>
@@ -592,6 +674,7 @@ const logs = [
 function bootReport() {{
   initParticles();
   renderFindings(findings);
+  initGeoMap({geo_lat}, {geo_lon}, "{geo_country}", {geo_conf});
   let pct = 0, logIdx = 0;
   const preloader = document.getElementById('systemPreloader');
   const term = document.getElementById('preloaderTerminal');
@@ -621,6 +704,35 @@ if (document.readyState === 'loading') {{
   document.addEventListener('DOMContentLoaded', bootReport);
 }} else {{
   bootReport();
+}}
+
+function initGeoMap(lat, lon, country, confidence) {{
+  const el = document.getElementById('geolocationMap');
+  if (!el) return;
+  const map = L.map(el, {{
+    center: [lat, lon],
+    zoom: confidence >= 70 ? 4 : 3,
+    zoomControl: false,
+    attributionControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    touchZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+  }});
+  L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+    maxZoom: 6,
+    minZoom: 2,
+  }}).addTo(map);
+  var icon = L.divIcon({{
+    html: '<div style="width:18px;height:18px;background:#ec4899;border:3px solid #00f0ff;border-radius:50%;box-shadow:0 0 20px rgba(236,72,153,0.6),0 0 40px rgba(0,240,255,0.3);animation:pulse 2s infinite"></div>',
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  }});
+  L.marker([lat, lon], {{ icon }}).addTo(map)
+    .bindPopup('<span style="color:#00f0ff;font-family:monospace;font-size:12px">' + country + ' (' + confidence + '%)</span>')
+    .openPopup();
 }}
 
 function animateCounters() {{
@@ -786,6 +898,29 @@ document.getElementById('themeSwitcher').addEventListener('click', () => {{
         if sec.get("exposure_score") is not None:
             lines.append(f"\n## Threat Assessment")
             lines.append(f"- **Exposure Score**: {sec['exposure_score']}/100 (Grade: {sec.get('exposure_grade','N/A')})")
+        email_gen_findings = d.get("email_gen_findings", [])
+        if email_gen_findings:
+            lines.append("\n## Email Pattern Generation")
+            for f in email_gen_findings:
+                lines.append(f"- **{f['title']}** (confidence {int(f['confidence']*100)}%)")
+                for e in f.get("evidence", [])[:5]:
+                    lines.append(f"  - {e}")
+            email_candidates = d.get("email_candidates", [])
+            if email_candidates:
+                lines.append(f"\n### Top Candidates")
+                for c in email_candidates[:10]:
+                    lines.append(f"- {c['email']} ({c['pattern']}, {int(c['confidence']*100)}%)")
+        password_analysis = d.get("password_analysis", {})
+        if password_analysis:
+            lines.append("\n## Password Leak Analysis")
+            risk = password_analysis.get("risk_assessment", {})
+            lines.append(f"- **Risk Grade**: {risk.get('grade', 'N/A')} ({risk.get('overall_score', 0)}/100)")
+            lines.append(f"- **Reuse Risk**: {password_analysis.get('reuse_risk', 'N/A')}")
+            recs = risk.get("recommendations", [])
+            if recs:
+                lines.append("\n### Recommendations")
+                for r in recs:
+                    lines.append(f"- {r}")
         lines.append(f"\n## Key Findings")
         for f in d["findings"]:
             if f["confidence"] >= 0.8:
@@ -830,6 +965,12 @@ document.getElementById('themeSwitcher').addEventListener('click', () => {{
         deep_web_hits = len([f for f in findings if f.category == FindingCategory.DEEP_WEB and f.confidence >= 0.5])
         risk = min(100, deep_web_hits * 25 + (1 if high_conf > 5 else 0) * 20)
         prof_completeness = min(100, len([f for f in findings if f.category == FindingCategory.IDENTITY]) * 12)
+        pw_analysis = self.ctx.shared_data.get("password_analysis", {})
+        pw_risk = pw_analysis.get("risk_assessment", {})
+        if pw_risk and pw_risk.get("overall_score", 0) > 0:
+            boost = pw_risk["overall_score"] * 0.3
+            risk = min(100, risk + boost)
+            exposure = min(100, exposure + boost * 0.5)
         return {
             "exposure_score": exposure,
             "risk_score": risk,
