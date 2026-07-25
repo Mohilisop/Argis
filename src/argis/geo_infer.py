@@ -39,10 +39,10 @@ _SCRIPT_HINTS = {
 }
 
 _PLATFORM_HINTS = {
-    "VK": ("Russia", 0.7, "VK is predominantly Russian"),
-    "Xing": ("Germany / DACH", 0.65, "Xing is primarily used in German-speaking countries"),
-    "Line": ("Japan / Thailand", 0.6, "Line is dominant in Japan and Thailand"),
-    "Ravelry": ("USA / UK", 0.4, "Ravelry skews English-speaking"),
+    "VK": ("Russia", 0.55, "VK is predominantly Russian"),
+    "Xing": ("Germany / DACH", 0.5, "Xing is primarily used in German-speaking countries"),
+    "Line": ("Japan / Thailand", 0.35, "Line is dominant in Japan and Thailand"),
+    "Ravelry": ("USA / UK", 0.3, "Ravelry skews English-speaking"),
 }
 
 _CURRENCY = {
@@ -66,7 +66,23 @@ _SCRIPTS = [
 _KNOWN_LOCATIONS = {
     "india": "India", "mumbai": "India", "delhi": "India", "bangalore": "India",
     "bengaluru": "India", "hyderabad": "India", "pune": "India", "chennai": "India",
-    "kolkata": "India", "usa": "USA", "united states": "USA",
+    "kolkata": "India", "ahmedabad": "India", "jaipur": "India", "lucknow": "India",
+    "surat": "India", "kanpur": "India", "nagpur": "India", "indore": "India",
+    "thane": "India", "bhopal": "India", "visakhapatnam": "India", "patna": "India",
+    "vadodara": "India", "ghaziabad": "India", "ludhiana": "India", "agra": "India",
+    "nashik": "India", "faridabad": "India", "meerut": "India", "rajkot": "India",
+    "kalyan": "India", "vasai": "India", "varanasi": "India", "srinagar": "India",
+    "amritsar": "India", "allahabad": "India", "guwahati": "India", "chandigarh": "India",
+    "coimbatore": "India", "mangalore": "India", "mysore": "India", "trivandrum": "India",
+    "kochi": "India", "kozhikode": "India", "gurgaon": "India", "noida": "India",
+    "goa": "India", "punjab": "India", "kerala": "India", "tamil nadu": "India",
+    "karnataka": "India", "maharashtra": "India", "gujarat": "India", "rajasthan": "India",
+    "uttar pradesh": "India", "bihar": "India", "west bengal": "India", "andhra pradesh": "India",
+    "telangana": "India", "madhya pradesh": "India", "odisha": "India", "jharkhand": "India",
+    "chhattisgarh": "India", "assam": "India", "haryana": "India", "himachal": "India",
+    "uttarakhand": "India", "mizoram": "India", "manipur": "India", "meghalaya": "India",
+    "nagaland": "India", "sikkim": "India", "tripura": "India", "arunachal": "India",
+    "usa": "USA", "united states": "USA",
     "new york": "USA", "san francisco": "USA", "los angeles": "USA",
     "london": "UK", "united kingdom": "UK", "uk": "UK",
     "germany": "Germany", "berlin": "Germany", "munich": "Germany",

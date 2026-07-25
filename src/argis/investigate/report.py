@@ -332,7 +332,14 @@ class InvestigationReport:
             "Japan / China": (35.0, 115.0), "USA / UK": (50.0, -10.0),
         }
         geo_list = intel.get("geo_signals", [])
-        best_geo = max(geo_list, key=lambda g: g.get("confidence", 0)) if geo_list else None
+        _VAGUE_REGIONS = {"Middle East / North Africa", "Europe", "Russia / Eastern Europe",
+                          "Germany / DACH", "Japan / Thailand", "Japan / China", "USA / UK"}
+        def _geo_key(signal):
+            conf = signal.get("confidence", 0)
+            country = signal.get("country", "")
+            penalty = -0.2 if country in _VAGUE_REGIONS else 0
+            return conf + penalty
+        best_geo = max(geo_list, key=_geo_key) if geo_list else None
         if best_geo:
             geo_country = best_geo.get("country", "Unknown")
             geo_conf = int(best_geo.get("confidence", 0) * 100)
