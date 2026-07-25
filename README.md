@@ -421,7 +421,7 @@ argis mcp --transport sse --port 8080         # SSE (web clients)
 
 ## Documentation
 
-Full docs at **[mohilisop.github.io/argis](https://mohilisop.github.io/argis)**
+Full docs at **[mohilisop.github.io/argis](https://mohilisop.github.io/argis)** | Website: **[argis.dev](https://mohilisop.github.io/argis/website/index.html)**
 
 ---
 
