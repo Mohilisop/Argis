@@ -39,6 +39,8 @@ extra:
       link: https://github.com/Mohilisop/Argis
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/argis/
+    - icon: fontawesome/brands/buymeacoffee
+      link: https://buymeacoffee.com/mohilisop
 
 copyright: Copyright &copy; 2024 Mohilisop
 
@@ -109,5 +111,6 @@ nav:
     - Webhooks & Notifications: guides/webhooks.md
     - Troubleshooting: guides/troubleshooting.md
   - About:
+    - Buy Me a Coffee: buy-me-a-coffee.md
     - Changelog: changelog.md
     - License: license.md
