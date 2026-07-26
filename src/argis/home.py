@@ -117,6 +117,7 @@ def render_home(console: Console, version: str = "0.9.0") -> None:
     console.print()
     console.print(_logo())
     console.print(tagline)
+    console.print(Text("  built by mohilisop & shravani", style="italic #3a4452"))
     console.print()
 
     usage = Text()
@@ -158,6 +159,4 @@ def render_home(console: Console, version: str = "0.9.0") -> None:
     footer.append("     defensive / self-OSINT only", style="italic #3a4452")
     console.print()
     console.print(footer)
-    console.print()
-    console.print(Text("  built by mohilisop &amp; shravani", style="italic #3a4452"))
     console.print()
